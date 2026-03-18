@@ -1,0 +1,219 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+@plugin "tailwindcss-animate";
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  
+  --color-crimson: var(--crimson);
+  --color-crimson-dark: var(--crimson-dark);
+  --color-offwhite: var(--offwhite);
+  --color-glass: var(--glass);
+  
+  --font-display: var(--font-cormorant);
+  --font-mono: var(--font-dm-mono);
+  --font-body: var(--font-plus-jakarta);
+  
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-floatReverse: floatReverse 7s ease-in-out infinite;
+  --animate-pulseGlow: pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-scrollLeft: scrollLeft 30s linear infinite;
+  --animate-flameFicker: flameFicker 3s ease-in-out infinite;
+  --animate-grain: grain 8s steps(10) infinite;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+  }
+  @keyframes floatReverse {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(20px); }
+  }
+  @keyframes pulseGlow {
+    0%, 100% { opacity: 1; box-shadow: 0 0 20px rgba(232, 25, 44, 0.5); }
+    50% { opacity: 0.7; box-shadow: 0 0 10px rgba(232, 25, 44, 0.2); }
+  }
+  @keyframes shimmer {
+    from { background-position: 0 0; }
+    to { background-position: -200% 0; }
+  }
+  @keyframes scrollLeft {
+    to { transform: translateX(-50%); }
+  }
+  @keyframes flameFicker {
+    0%, 100% { transform: scale(1); opacity: 1; filter: brightness(1); }
+    25% { transform: scale(1.05) rotate(1deg); opacity: 0.9; filter: brightness(1.1); }
+    50% { transform: scale(0.98) rotate(-1deg); opacity: 0.95; filter: brightness(0.9); }
+    75% { transform: scale(1.02) rotate(0.5deg); opacity: 1; filter: brightness(1.2); }
+  }
+  @keyframes grain {
+    0%, 100% { transform: translate(0, 0); }
+    10% { transform: translate(-5%, -10%); }
+    20% { transform: translate(-15%, 5%); }
+    30% { transform: translate(7%, -25%); }
+    40% { transform: translate(-5%, 25%); }
+    50% { transform: translate(-15%, 10%); }
+    60% { transform: translate(15%, 0%); }
+    70% { transform: translate(0%, 15%); }
+    80% { transform: translate(3%, 35%); }
+    90% { transform: translate(-10%, 10%); }
+  }
+  @keyframes floatUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(-800px); }
+  }
+}
+
+:root {
+  --background: #080808;
+  --foreground: #F5F0EB;
+  --card: #080808;
+  --card-foreground: #F5F0EB;
+  --popover: #080808;
+  --popover-foreground: #F5F0EB;
+  --primary: #E8192C;
+  --primary-foreground: #F5F0EB;
+  --secondary: #27272a;
+  --secondary-foreground: #F5F0EB;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #F5F0EB;
+  --destructive: #7f1d1d;
+  --destructive-foreground: #F5F0EB;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #E8192C;
+  --chart-1: #e76e50;
+  --chart-2: #2a9d8f;
+  --chart-3: #264653;
+  --chart-4: #e9c46a;
+  --chart-5: #f4a261;
+  --radius: 0.5rem;
+  
+  --crimson: #E8192C;
+  --crimson-dark: #A8111E;
+  --offwhite: #F5F0EB;
+  --glass: rgba(255, 255, 255, 0.05);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
+  animation: grain 8s steps(10) infinite;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--crimson);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--crimson-dark);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+}
+
+.shimmer-text {
+  background: linear-gradient(to right, #E8192C 20%, #ff8a95 50%, #E8192C 80%);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: shimmer 2s linear infinite;
+}
+
+.text-crimson {
+  color: var(--crimson);
+}
+.bg-crimson {
+  background-color: var(--crimson);
+}
+.border-crimson {
+  border-color: var(--crimson);
+}
+
+.ignite-btn {
+  transition: transform 300ms ease, box-shadow 300ms ease, background-color 300ms ease, border-color 300ms ease;
+}
+
+.ignite-btn:hover {
+  transform: scale(1.03);
+}
+
+.ignite-btn:active {
+  transform: scale(0.97);
+}
+
+.marketing-root button {
+  transition: transform 300ms ease, box-shadow 300ms ease, background-color 300ms ease, border-color 300ms ease;
+}
+
+.marketing-root button:hover {
+  transform: scale(1.03);
+}
+
+.marketing-root button:active {
+  transform: scale(0.97);
+}

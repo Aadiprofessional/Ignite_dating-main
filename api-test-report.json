@@ -1,0 +1,794 @@
+{
+  "baseUrl": "https://server.matrixai.asia",
+  "testedAt": "2026-03-18T16:55:57.849Z",
+  "users": {
+    "user1": "ignite_test_1773852469188_1@example.com",
+    "user2": "ignite_test_1773852469188_2@example.com",
+    "user1Id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+    "user2Id": "eae6fd78-83ad-48ba-b025-85886b051dca"
+  },
+  "summary": {
+    "total": 23,
+    "success": 21,
+    "failure": 2
+  },
+  "calls": [
+    {
+      "name": "root",
+      "request": {
+        "method": "GET",
+        "path": "/",
+        "body": null,
+        "hasAuth": false
+      },
+      "status": 200,
+      "response": {
+        "name": "Ignite API",
+        "status": "running"
+      }
+    },
+    {
+      "name": "health",
+      "request": {
+        "method": "GET",
+        "path": "/health",
+        "body": null,
+        "hasAuth": false
+      },
+      "status": 200,
+      "response": {
+        "status": "ok"
+      }
+    },
+    {
+      "name": "login_user1",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "body": {
+          "email": "ignite_test_1773852469188_1@example.com",
+          "password": "[REDACTED]"
+        },
+        "hasAuth": false
+      },
+      "status": 200,
+      "response": {
+        "user": {
+          "id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+          "aud": "authenticated",
+          "role": "authenticated",
+          "email": "ignite_test_1773852469188_1@example.com",
+          "email_confirmed_at": "2026-03-18T16:50:45.211913Z",
+          "phone": "",
+          "confirmation_sent_at": "2026-03-18T16:47:50.979012Z",
+          "confirmed_at": "2026-03-18T16:50:45.211913Z",
+          "last_sign_in_at": "2026-03-18T16:55:53.700058873Z",
+          "app_metadata": {
+            "provider": "email",
+            "providers": [
+              "email"
+            ]
+          },
+          "user_metadata": {
+            "email": "ignite_test_1773852469188_1@example.com",
+            "email_verified": false,
+            "phone_verified": false,
+            "sub": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a"
+          },
+          "identities": [
+            {
+              "identity_id": "a51e1e01-5f3a-480c-93bd-6e2a19c7fc02",
+              "id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+              "user_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+              "identity_data": {
+                "email": "ignite_test_1773852469188_1@example.com",
+                "email_verified": false,
+                "phone_verified": false,
+                "sub": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a"
+              },
+              "provider": "email",
+              "last_sign_in_at": "2026-03-18T16:47:50.970833Z",
+              "created_at": "2026-03-18T16:47:50.971157Z",
+              "updated_at": "2026-03-18T16:47:50.971157Z",
+              "email": "ignite_test_1773852469188_1@example.com"
+            }
+          ],
+          "created_at": "2026-03-18T16:47:50.951374Z",
+          "updated_at": "2026-03-18T16:55:53.701513Z",
+          "is_anonymous": false
+        },
+        "session": {
+          "access_token": "[REDACTED]",
+          "token_type": "bearer",
+          "expires_in": 3600,
+          "expires_at": 1773856553,
+          "refresh_token": "[REDACTED]",
+          "user": {
+            "id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+            "aud": "authenticated",
+            "role": "authenticated",
+            "email": "ignite_test_1773852469188_1@example.com",
+            "email_confirmed_at": "2026-03-18T16:50:45.211913Z",
+            "phone": "",
+            "confirmation_sent_at": "2026-03-18T16:47:50.979012Z",
+            "confirmed_at": "2026-03-18T16:50:45.211913Z",
+            "last_sign_in_at": "2026-03-18T16:55:53.700058873Z",
+            "app_metadata": {
+              "provider": "email",
+              "providers": [
+                "email"
+              ]
+            },
+            "user_metadata": {
+              "email": "ignite_test_1773852469188_1@example.com",
+              "email_verified": false,
+              "phone_verified": false,
+              "sub": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a"
+            },
+            "identities": [
+              {
+                "identity_id": "a51e1e01-5f3a-480c-93bd-6e2a19c7fc02",
+                "id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+                "user_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+                "identity_data": {
+                  "email": "ignite_test_1773852469188_1@example.com",
+                  "email_verified": false,
+                  "phone_verified": false,
+                  "sub": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a"
+                },
+                "provider": "email",
+                "last_sign_in_at": "2026-03-18T16:47:50.970833Z",
+                "created_at": "2026-03-18T16:47:50.971157Z",
+                "updated_at": "2026-03-18T16:47:50.971157Z",
+                "email": "ignite_test_1773852469188_1@example.com"
+              }
+            ],
+            "created_at": "2026-03-18T16:47:50.951374Z",
+            "updated_at": "2026-03-18T16:55:53.701513Z",
+            "is_anonymous": false
+          }
+        }
+      }
+    },
+    {
+      "name": "login_user2",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "body": {
+          "email": "ignite_test_1773852469188_2@example.com",
+          "password": "[REDACTED]"
+        },
+        "hasAuth": false
+      },
+      "status": 200,
+      "response": {
+        "user": {
+          "id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+          "aud": "authenticated",
+          "role": "authenticated",
+          "email": "ignite_test_1773852469188_2@example.com",
+          "email_confirmed_at": "2026-03-18T16:50:45.211913Z",
+          "phone": "",
+          "confirmation_sent_at": "2026-03-18T16:47:51.361059Z",
+          "confirmed_at": "2026-03-18T16:50:45.211913Z",
+          "last_sign_in_at": "2026-03-18T16:55:53.969132403Z",
+          "app_metadata": {
+            "provider": "email",
+            "providers": [
+              "email"
+            ]
+          },
+          "user_metadata": {
+            "email": "ignite_test_1773852469188_2@example.com",
+            "email_verified": false,
+            "phone_verified": false,
+            "sub": "eae6fd78-83ad-48ba-b025-85886b051dca"
+          },
+          "identities": [
+            {
+              "identity_id": "b479a15b-49ee-4e51-bfd9-075c18f28b3b",
+              "id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+              "user_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+              "identity_data": {
+                "email": "ignite_test_1773852469188_2@example.com",
+                "email_verified": false,
+                "phone_verified": false,
+                "sub": "eae6fd78-83ad-48ba-b025-85886b051dca"
+              },
+              "provider": "email",
+              "last_sign_in_at": "2026-03-18T16:47:51.358513Z",
+              "created_at": "2026-03-18T16:47:51.35855Z",
+              "updated_at": "2026-03-18T16:47:51.35855Z",
+              "email": "ignite_test_1773852469188_2@example.com"
+            }
+          ],
+          "created_at": "2026-03-18T16:47:51.35492Z",
+          "updated_at": "2026-03-18T16:55:53.97033Z",
+          "is_anonymous": false
+        },
+        "session": {
+          "access_token": "[REDACTED]",
+          "token_type": "bearer",
+          "expires_in": 3600,
+          "expires_at": 1773856553,
+          "refresh_token": "[REDACTED]",
+          "user": {
+            "id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+            "aud": "authenticated",
+            "role": "authenticated",
+            "email": "ignite_test_1773852469188_2@example.com",
+            "email_confirmed_at": "2026-03-18T16:50:45.211913Z",
+            "phone": "",
+            "confirmation_sent_at": "2026-03-18T16:47:51.361059Z",
+            "confirmed_at": "2026-03-18T16:50:45.211913Z",
+            "last_sign_in_at": "2026-03-18T16:55:53.969132403Z",
+            "app_metadata": {
+              "provider": "email",
+              "providers": [
+                "email"
+              ]
+            },
+            "user_metadata": {
+              "email": "ignite_test_1773852469188_2@example.com",
+              "email_verified": false,
+              "phone_verified": false,
+              "sub": "eae6fd78-83ad-48ba-b025-85886b051dca"
+            },
+            "identities": [
+              {
+                "identity_id": "b479a15b-49ee-4e51-bfd9-075c18f28b3b",
+                "id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+                "user_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+                "identity_data": {
+                  "email": "ignite_test_1773852469188_2@example.com",
+                  "email_verified": false,
+                  "phone_verified": false,
+                  "sub": "eae6fd78-83ad-48ba-b025-85886b051dca"
+                },
+                "provider": "email",
+                "last_sign_in_at": "2026-03-18T16:47:51.358513Z",
+                "created_at": "2026-03-18T16:47:51.35855Z",
+                "updated_at": "2026-03-18T16:47:51.35855Z",
+                "email": "ignite_test_1773852469188_2@example.com"
+              }
+            ],
+            "created_at": "2026-03-18T16:47:51.35492Z",
+            "updated_at": "2026-03-18T16:55:53.97033Z",
+            "is_anonymous": false
+          }
+        }
+      }
+    },
+    {
+      "name": "auth_me_user1",
+      "request": {
+        "method": "GET",
+        "path": "/api/auth/me",
+        "body": null,
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "profile": {
+          "user_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+          "username": null,
+          "full_name": null,
+          "bio": "User1 bio updated final",
+          "birth_date": null,
+          "gender": null,
+          "interested_in": [],
+          "photo_urls": [
+            "https://picsum.photos/seed/u1a/400/600",
+            "https://picsum.photos/seed/u1b/400/600"
+          ],
+          "latitude": 19.076,
+          "longitude": 72.8777,
+          "city": "Mumbai",
+          "country": "India",
+          "is_active": true,
+          "created_at": "2026-03-18T16:53:18.770149+00:00",
+          "updated_at": "2026-03-18T16:55:53.715439+00:00"
+        },
+        "preferences": {
+          "user_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+          "min_age": 21,
+          "max_age": 35,
+          "max_distance_km": 200,
+          "interested_in": [
+            "female"
+          ],
+          "show_me": true,
+          "created_at": "2026-03-18T16:53:18.953609+00:00",
+          "updated_at": "2026-03-18T16:55:53.738326+00:00"
+        }
+      }
+    },
+    {
+      "name": "update_me_user1",
+      "request": {
+        "method": "PUT",
+        "path": "/api/me",
+        "body": {
+          "bio": "User1 bio updated final",
+          "city": "Mumbai",
+          "country": "India",
+          "latitude": 19.076,
+          "longitude": 72.8777
+        },
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "profile": {
+          "user_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+          "username": null,
+          "full_name": null,
+          "bio": "User1 bio updated final",
+          "birth_date": null,
+          "gender": null,
+          "interested_in": [],
+          "photo_urls": [
+            "https://picsum.photos/seed/u1a/400/600",
+            "https://picsum.photos/seed/u1b/400/600"
+          ],
+          "latitude": 19.076,
+          "longitude": 72.8777,
+          "city": "Mumbai",
+          "country": "India",
+          "is_active": true,
+          "created_at": "2026-03-18T16:53:18.770149+00:00",
+          "updated_at": "2026-03-18T16:55:54.367917+00:00"
+        }
+      }
+    },
+    {
+      "name": "update_preferences_user1",
+      "request": {
+        "method": "PUT",
+        "path": "/api/preferences",
+        "body": {
+          "min_age": 21,
+          "max_age": 35,
+          "max_distance_km": 200,
+          "interested_in": [
+            "female"
+          ],
+          "show_me": true
+        },
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "preferences": {
+          "user_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+          "min_age": 21,
+          "max_age": 35,
+          "max_distance_km": 200,
+          "interested_in": [
+            "female"
+          ],
+          "show_me": true,
+          "created_at": "2026-03-18T16:53:18.953609+00:00",
+          "updated_at": "2026-03-18T16:55:54.535796+00:00"
+        }
+      }
+    },
+    {
+      "name": "replace_images_user1",
+      "request": {
+        "method": "POST",
+        "path": "/api/images",
+        "body": {
+          "operation": "replace_all",
+          "urls": [
+            "https://picsum.photos/seed/u1a/400/600",
+            "https://picsum.photos/seed/u1b/400/600"
+          ]
+        },
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "profile": {
+          "user_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+          "username": null,
+          "full_name": null,
+          "bio": "User1 bio updated final",
+          "birth_date": null,
+          "gender": null,
+          "interested_in": [],
+          "photo_urls": [
+            "https://picsum.photos/seed/u1a/400/600",
+            "https://picsum.photos/seed/u1b/400/600"
+          ],
+          "latitude": 19.076,
+          "longitude": 72.8777,
+          "city": "Mumbai",
+          "country": "India",
+          "is_active": true,
+          "created_at": "2026-03-18T16:53:18.770149+00:00",
+          "updated_at": "2026-03-18T16:55:54.71911+00:00"
+        }
+      }
+    },
+    {
+      "name": "discover_user1",
+      "request": {
+        "method": "GET",
+        "path": "/api/discover?limit=20",
+        "body": null,
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "profiles": []
+      }
+    },
+    {
+      "name": "auth_me_user2",
+      "request": {
+        "method": "GET",
+        "path": "/api/auth/me",
+        "body": null,
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "profile": {
+          "user_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+          "username": null,
+          "full_name": null,
+          "bio": "User2 bio updated final",
+          "birth_date": null,
+          "gender": null,
+          "interested_in": [],
+          "photo_urls": [
+            "https://picsum.photos/seed/u2a/400/600"
+          ],
+          "latitude": 28.57,
+          "longitude": 77.32,
+          "city": "Noida",
+          "country": "India",
+          "is_active": true,
+          "created_at": "2026-03-18T16:53:19.202355+00:00",
+          "updated_at": "2026-03-18T16:55:53.980737+00:00"
+        },
+        "preferences": {
+          "user_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+          "min_age": 21,
+          "max_age": 35,
+          "max_distance_km": 200,
+          "interested_in": [
+            "male"
+          ],
+          "show_me": true,
+          "created_at": "2026-03-18T16:53:19.221543+00:00",
+          "updated_at": "2026-03-18T16:55:54.002522+00:00"
+        }
+      }
+    },
+    {
+      "name": "update_me_user2",
+      "request": {
+        "method": "PUT",
+        "path": "/api/me",
+        "body": {
+          "bio": "User2 bio updated final",
+          "city": "Noida",
+          "country": "India",
+          "latitude": 28.57,
+          "longitude": 77.32
+        },
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "profile": {
+          "user_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+          "username": null,
+          "full_name": null,
+          "bio": "User2 bio updated final",
+          "birth_date": null,
+          "gender": null,
+          "interested_in": [],
+          "photo_urls": [
+            "https://picsum.photos/seed/u2a/400/600"
+          ],
+          "latitude": 28.57,
+          "longitude": 77.32,
+          "city": "Noida",
+          "country": "India",
+          "is_active": true,
+          "created_at": "2026-03-18T16:53:19.202355+00:00",
+          "updated_at": "2026-03-18T16:55:55.238464+00:00"
+        }
+      }
+    },
+    {
+      "name": "update_preferences_user2",
+      "request": {
+        "method": "PUT",
+        "path": "/api/preferences",
+        "body": {
+          "min_age": 21,
+          "max_age": 35,
+          "max_distance_km": 200,
+          "interested_in": [
+            "male"
+          ],
+          "show_me": true
+        },
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "preferences": {
+          "user_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+          "min_age": 21,
+          "max_age": 35,
+          "max_distance_km": 200,
+          "interested_in": [
+            "male"
+          ],
+          "show_me": true,
+          "created_at": "2026-03-18T16:53:19.221543+00:00",
+          "updated_at": "2026-03-18T16:55:55.405759+00:00"
+        }
+      }
+    },
+    {
+      "name": "replace_images_user2",
+      "request": {
+        "method": "POST",
+        "path": "/api/images",
+        "body": {
+          "operation": "replace_all",
+          "urls": [
+            "https://picsum.photos/seed/u2a/400/600"
+          ]
+        },
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "profile": {
+          "user_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+          "username": null,
+          "full_name": null,
+          "bio": "User2 bio updated final",
+          "birth_date": null,
+          "gender": null,
+          "interested_in": [],
+          "photo_urls": [
+            "https://picsum.photos/seed/u2a/400/600"
+          ],
+          "latitude": 28.57,
+          "longitude": 77.32,
+          "city": "Noida",
+          "country": "India",
+          "is_active": true,
+          "created_at": "2026-03-18T16:53:19.202355+00:00",
+          "updated_at": "2026-03-18T16:55:55.574838+00:00"
+        }
+      }
+    },
+    {
+      "name": "discover_user2",
+      "request": {
+        "method": "GET",
+        "path": "/api/discover?limit=20",
+        "body": null,
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "profiles": []
+      }
+    },
+    {
+      "name": "swipe_user1_like_user2",
+      "request": {
+        "method": "POST",
+        "path": "/api/swipes",
+        "body": {
+          "target_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+          "action": "like"
+        },
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "result": {
+          "ok": true,
+          "action": "like",
+          "is_match": true,
+          "target_id": "eae6fd78-83ad-48ba-b025-85886b051dca"
+        }
+      }
+    },
+    {
+      "name": "swipe_user2_like_user1",
+      "request": {
+        "method": "POST",
+        "path": "/api/swipes",
+        "body": {
+          "target_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+          "action": "like"
+        },
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "result": {
+          "ok": true,
+          "action": "like",
+          "is_match": true,
+          "target_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a"
+        }
+      }
+    },
+    {
+      "name": "notifications_user1",
+      "request": {
+        "method": "GET",
+        "path": "/api/notifications?limit=30",
+        "body": null,
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "notifications": [
+          {
+            "id": "f8559e51-9d03-47bf-a52d-34bca21e9ed3",
+            "recipient_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+            "actor_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+            "type": "match",
+            "entity_id": "4c562563-da67-4510-8983-c0e090d516ce",
+            "payload": {
+              "match_id": "4c562563-da67-4510-8983-c0e090d516ce"
+            },
+            "is_read": true,
+            "created_at": "2026-03-18T16:53:21.535612+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "name": "matches_user1",
+      "request": {
+        "method": "GET",
+        "path": "/api/matches",
+        "body": null,
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "matches": [
+          {
+            "id": "4c562563-da67-4510-8983-c0e090d516ce",
+            "user_a": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+            "user_b": "eae6fd78-83ad-48ba-b025-85886b051dca",
+            "created_at": "2026-03-18T16:53:21.535612+00:00",
+            "other_user": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "notification_read_user1",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/notifications/f8559e51-9d03-47bf-a52d-34bca21e9ed3/read",
+        "body": null,
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "notification": {
+          "id": "f8559e51-9d03-47bf-a52d-34bca21e9ed3",
+          "recipient_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+          "actor_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+          "type": "match",
+          "entity_id": "4c562563-da67-4510-8983-c0e090d516ce",
+          "payload": {
+            "match_id": "4c562563-da67-4510-8983-c0e090d516ce"
+          },
+          "is_read": true,
+          "created_at": "2026-03-18T16:53:21.535612+00:00"
+        }
+      }
+    },
+    {
+      "name": "notifications_user2",
+      "request": {
+        "method": "GET",
+        "path": "/api/notifications?limit=30",
+        "body": null,
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "notifications": [
+          {
+            "id": "6b3e4bc8-403f-4e58-ae1a-c45b9a2a29a3",
+            "recipient_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+            "actor_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+            "type": "match",
+            "entity_id": "4c562563-da67-4510-8983-c0e090d516ce",
+            "payload": {
+              "match_id": "4c562563-da67-4510-8983-c0e090d516ce"
+            },
+            "is_read": false,
+            "created_at": "2026-03-18T16:53:21.535612+00:00"
+          },
+          {
+            "id": "4401704c-94a5-408a-9004-f5a76c22d6e5",
+            "recipient_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+            "actor_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+            "type": "like",
+            "entity_id": null,
+            "payload": {
+              "from_user_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a"
+            },
+            "is_read": false,
+            "created_at": "2026-03-18T16:53:21.300933+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "name": "matches_user2",
+      "request": {
+        "method": "GET",
+        "path": "/api/matches",
+        "body": null,
+        "hasAuth": true
+      },
+      "status": 200,
+      "response": {
+        "matches": [
+          {
+            "id": "4c562563-da67-4510-8983-c0e090d516ce",
+            "user_a": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
+            "user_b": "eae6fd78-83ad-48ba-b025-85886b051dca",
+            "created_at": "2026-03-18T16:53:21.535612+00:00",
+            "other_user": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "report_user2_by_user1",
+      "request": {
+        "method": "POST",
+        "path": "/api/reports",
+        "body": {
+          "reported_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
+          "reason": "spam",
+          "details": "final api test"
+        },
+        "hasAuth": true
+      },
+      "status": 400,
+      "response": {
+        "error": "new row violates row-level security policy for table \"reports\""
+      }
+    },
+    {
+      "name": "block_user2_by_user1",
+      "request": {
+        "method": "POST",
+        "path": "/api/blocks",
+        "body": {
+          "blocked_id": "eae6fd78-83ad-48ba-b025-85886b051dca"
+        },
+        "hasAuth": true
+      },
+      "status": 400,
+      "response": {
+        "error": "duplicate key value violates unique constraint \"unique_block\""
+      }
+    }
+  ]
+}
