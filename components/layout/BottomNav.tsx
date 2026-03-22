@@ -3,13 +3,13 @@
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Flame, MessageCircle, Search, User, Users } from "lucide-react";
+import { Flame, MessageCircle, Search, User, Users, CalendarRange } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { matches, notifications } = useStore();
+  const { matches } = useStore();
 
   const unreadMatches = matches.filter((m) => m.isNew).length;
   // This is a simplification; in a real app, we'd check message read status more thoroughly
@@ -18,6 +18,7 @@ export function BottomNav() {
   const navItems = [
     { href: "/home", icon: Flame, label: "Home" },
     { href: "/discover", icon: Search, label: "Discover" },
+    { href: "/events", icon: CalendarRange, label: "Events" },
     { href: "/matches", icon: Users, label: "Matches", badge: unreadMatches },
     { href: "/messages", icon: MessageCircle, label: "Messages", badge: unreadMessages }, // Assuming messages page is a list of chats
     { href: "/profile", icon: User, label: "Profile" },

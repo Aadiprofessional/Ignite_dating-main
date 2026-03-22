@@ -2,11 +2,18 @@
 
 import { ConversationsList } from "@/components/matches/ConversationsList";
 import { NewMatchesRow } from "@/components/matches/NewMatchesRow";
-import { mockMatches } from "@/lib/mockMatches";
+import { useStore } from "@/lib/store";
 import { Flame } from "lucide-react";
+import Link from "next/link";
+import { useEffect } from "react";
 
 export default function MatchesPage() {
-  const hasMatches = mockMatches.length > 0;
+  const { matches, refreshMatches } = useStore();
+  const hasMatches = matches.length > 0;
+
+  useEffect(() => {
+    void refreshMatches();
+  }, [refreshMatches]);
 
   return (
     <div className="min-h-screen bg-[#080808] pb-24 lg:pb-8">
@@ -26,7 +33,7 @@ export default function MatchesPage() {
             <h2 className="mb-2 px-4 font-mono text-xs font-bold uppercase tracking-wider text-zinc-500 lg:px-0">
               New Matches
             </h2>
-            <NewMatchesRow matches={mockMatches} />
+            <NewMatchesRow matches={matches} />
           </section>
 
           {/* Conversations */}
@@ -34,7 +41,7 @@ export default function MatchesPage() {
             <h2 className="mb-2 px-4 font-mono text-xs font-bold uppercase tracking-wider text-zinc-500 lg:px-0">
               Messages
             </h2>
-            <ConversationsList matches={mockMatches} />
+            <ConversationsList matches={matches} />
           </section>
         </div>
       ) : (
@@ -49,9 +56,9 @@ export default function MatchesPage() {
           <p className="text-zinc-400 mb-8 max-w-xs">
             Start swiping to find your perfect match. Don't be shy!
           </p>
-          <button className="px-8 py-3 bg-crimson text-white font-bold rounded-full shadow-[0_0_20px_rgba(232,25,44,0.4)] hover:scale-105 transition-transform">
+          <Link href="/home" className="px-8 py-3 bg-crimson text-white font-bold rounded-full shadow-[0_0_20px_rgba(232,25,44,0.4)] hover:scale-105 transition-transform">
             Start Swiping
-          </button>
+          </Link>
         </div>
       )}
     </div>

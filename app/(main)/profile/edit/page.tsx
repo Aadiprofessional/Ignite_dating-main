@@ -81,6 +81,7 @@ export default function EditProfilePage() {
   const [education, setEducation] = useState("");
   const [interests, setInterests] = useState<string[]>([]);
   const [newInterest, setNewInterest] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -130,16 +131,21 @@ export default function EditProfilePage() {
     setInterests(interests.filter(i => i !== interestToRemove));
   };
 
-  const handleSave = () => {
-    updateProfile({
-      photos,
-      bio,
-      job,
-      company,
-      education,
-      interests
-    });
-    router.back();
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateProfile({
+        photos,
+        bio,
+        job,
+        company,
+        education,
+        interests
+      });
+      router.back();
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!currentUser) return null;
@@ -154,10 +160,11 @@ export default function EditProfilePage() {
         </button>
         <h1 className="font-serif text-xl font-bold">Edit Profile</h1>
         <button 
-          onClick={handleSave}
+          onClick={() => void handleSave()}
+          disabled={isSaving}
           className="text-crimson font-bold text-sm hover:text-crimson-dark transition-colors"
         >
-          Done
+          {isSaving ? "Saving..." : "Done"}
         </button>
         </div>
       </div>

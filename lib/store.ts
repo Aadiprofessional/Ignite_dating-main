@@ -1,6 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Match, mockMatches, mockMessages } from './mockMatches';
+import { Match, mockMatches } from './mockMatches';
+import { Profile } from './mockProfiles';
+import {
+  AccountState,
+  api,
+  ApiError,
+  AuthSession,
+  mapApiDiscoverProfile,
+  mapApiMatch,
+  mapApiNotification,
+  mapApiUserToProfile,
+  OnboardingStatusPayload,
+  SignupPayload,
+  UniversityOption,
+  VerificationRequest,
+} from './api';
 
 export interface UserProfile {
   id: string;
@@ -26,22 +41,71 @@ export interface UserProfile {
     profileViews: number;
   };
   boosts: number;
+  preferences: {
+    minAge: number;
+    maxAge: number;
+    maxDistanceKm: number;
+    interestedIn: string[];
+    showMe: boolean;
+  };
 }
 
 interface AppState {
   currentUser: UserProfile | null;
+  session: AuthSession | null;
   isPro: boolean;
   matches: Match[];
+  discoverProfiles: Profile[];
   notifications: AppNotification[];
+  accountState: AccountState | null;
+  onboardingStatus: OnboardingStatusPayload | null;
+  universities: UniversityOption[];
   
   // Actions
+  signup: (payload: SignupPayload) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  hydrateFromApi: () => Promise<void>;
+  refreshDiscover: (options?: { limit?: number; university_mode?: 'all' | 'same_university'; search?: string }) => Promise<void>;
+  sendSwipe: (targetId: string, action: 'like' | 'pass' | 'superlike') => Promise<void>;
+  refreshMatches: () => Promise<void>;
+  refreshNotifications: (limit?: number) => Promise<void>;
   togglePro: () => void;
-  updateProfile: (updates: Partial<UserProfile>) => void;
-  markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+  reportUser: (userId: string, reason: string, details?: string) => Promise<void>;
+  blockUser: (userId: string) => Promise<void>;
   addNotification: (notification: AppNotification) => void;
   addBoosts: (amount: number) => void;
   consumeBoost: () => void;
+  refreshOnboardingStatus: () => Promise<OnboardingStatusPayload | null>;
+  searchUniversities: (search: string) => Promise<UniversityOption[]>;
+  uploadVerificationDocument: (file: File) => Promise<string>;
+  uploadProfilePhoto: (file: File) => Promise<string>;
+  submitOnboardingAndVerification: (payload: {
+    first_name: string;
+    last_name: string;
+    birth_date: string;
+    gender: string;
+    pronouns?: string;
+    height_cm: number;
+    bio: string;
+    occupation: string;
+    education: string;
+    interests: string[];
+    relationship_goals: string[];
+    interested_in: string[];
+    min_age: number;
+    max_age: number;
+    max_distance_km: number;
+    show_me_on_ignite: boolean;
+    university_id?: string;
+    custom_university_name?: string;
+    document_url: string;
+    phone_number: string;
+    photo_urls: string[];
+  }) => Promise<VerificationRequest | null>;
 }
 
 export interface AppNotification {
@@ -84,6 +148,13 @@ const initialUser: UserProfile = {
     profileViews: 1056,
   },
   boosts: 2,
+  preferences: {
+    minAge: 18,
+    maxAge: 35,
+    maxDistanceKm: 50,
+    interestedIn: ['female'],
+    showMe: true,
+  },
 };
 
 const initialNotifications: AppNotification[] = [
@@ -116,32 +187,255 @@ const initialNotifications: AppNotification[] = [
   },
 ];
 
+const parseAccountState = (payload: Record<string, unknown>): AccountState | null => {
+  const accountState = payload.account_state as AccountState | undefined;
+  if (!accountState) return null;
+  return {
+    onboarding_completed: Boolean(accountState.onboarding_completed),
+    onboarding_step: typeof accountState.onboarding_step === 'number' ? accountState.onboarding_step : 0,
+    verification_status: typeof accountState.verification_status === 'string' ? accountState.verification_status : 'pending_submission',
+    can_use_app: Boolean(accountState.can_use_app),
+  };
+};
+
 export const useStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       currentUser: initialUser,
+      session: null,
       isPro: false,
       matches: mockMatches,
+      discoverProfiles: [],
       notifications: initialNotifications,
+      accountState: null,
+      onboardingStatus: null,
+      universities: [],
+
+      signup: async (payload) => {
+        await api.signup(payload);
+      },
+
+      login: async (email, password) => {
+        const { session, user, accountState } = await api.login(email, password);
+        set({ session, accountState });
+        try {
+          const me = await api.me(session.accessToken);
+          const meData = (me.data?.data as Record<string, unknown>) || me.data || {};
+          const userProfile = mapApiUserToProfile((user || {}) as Record<string, unknown>, meData);
+          const meAccountState = parseAccountState(meData) || accountState;
+          set((state) => ({
+            currentUser: {
+              ...state.currentUser,
+              ...userProfile,
+              boosts: state.currentUser?.boosts ?? 0,
+              stats: {
+                likesReceived: state.currentUser?.stats.likesReceived ?? 0,
+                matches: state.currentUser?.stats.matches ?? 0,
+                profileViews: state.currentUser?.stats.profileViews ?? 0,
+              },
+            },
+            accountState: meAccountState || state.accountState,
+          }));
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 401) {
+            get().logout();
+            throw error;
+          }
+          const userProfile = mapApiUserToProfile((user || {}) as Record<string, unknown>);
+          set((state) => ({
+            currentUser: {
+              ...state.currentUser,
+              ...userProfile,
+              boosts: state.currentUser?.boosts ?? 0,
+              stats: {
+                likesReceived: state.currentUser?.stats.likesReceived ?? 0,
+                matches: state.currentUser?.stats.matches ?? 0,
+                profileViews: state.currentUser?.stats.profileViews ?? 0,
+              },
+            },
+          }));
+        }
+        await Promise.allSettled([get().refreshDiscover({ limit: 20 }), get().refreshMatches(), get().refreshNotifications(30)]);
+        await get().refreshOnboardingStatus().catch(() => null);
+      },
+
+      logout: () =>
+        set({
+          session: null,
+          currentUser: null,
+          matches: [],
+          discoverProfiles: [],
+          notifications: [],
+          accountState: null,
+          onboardingStatus: null,
+          universities: [],
+        }),
+
+      hydrateFromApi: async () => {
+        const token = get().session?.accessToken;
+        if (!token) return;
+        try {
+          const me = await api.me(token);
+          const meData = (me.data?.data as Record<string, unknown>) || me.data || {};
+          const meUser = (meData.user as Record<string, unknown>) || {};
+          const accountState = parseAccountState(meData);
+          set((state) => ({
+            currentUser: {
+              ...(state.currentUser || initialUser),
+              ...mapApiUserToProfile(meUser, meData),
+            },
+            accountState: accountState || state.accountState,
+          }));
+          await Promise.all([get().refreshDiscover({ limit: 20 }), get().refreshMatches(), get().refreshNotifications(30)]);
+          await get().refreshOnboardingStatus();
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 401) {
+            get().logout();
+            return;
+          }
+          throw error;
+        }
+      },
+
+      refreshDiscover: async (options = { limit: 20 }) => {
+        const token = get().session?.accessToken;
+        if (!token) return;
+        try {
+          const discover = await api.discover(token, options);
+          const profiles = (discover.data?.profiles || []).map((profile) =>
+            mapApiDiscoverProfile(profile as Record<string, unknown>)
+          );
+          set({ discoverProfiles: profiles });
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 401) {
+            get().logout();
+            return;
+          }
+          throw error;
+        }
+      },
+
+      sendSwipe: async (targetId, action) => {
+        const token = get().session?.accessToken;
+        if (!token) return;
+        await api.swipe(token, targetId, action);
+        set((state) => ({
+          discoverProfiles: state.discoverProfiles.filter((profile) => profile.id !== targetId),
+        }));
+      },
+
+      refreshMatches: async () => {
+        const token = get().session?.accessToken;
+        if (!token) return;
+        const matches = await api.matches(token);
+        const mapped = (matches.data?.matches || []).map((match) => mapApiMatch(match as Record<string, unknown>));
+        set((state) => ({
+          matches: mapped,
+          currentUser: state.currentUser
+            ? {
+                ...state.currentUser,
+                stats: {
+                  ...state.currentUser.stats,
+                  matches: mapped.length,
+                },
+              }
+            : state.currentUser,
+        }));
+      },
+
+      refreshNotifications: async (limit = 30) => {
+        const token = get().session?.accessToken;
+        if (!token) return;
+        const notifications = await api.notifications(token, limit);
+        const mapped = (notifications.data?.notifications || []).map((item) =>
+          mapApiNotification(item as Record<string, unknown>)
+        );
+        set({ notifications: mapped });
+      },
 
       togglePro: () => set((state) => ({ isPro: !state.isPro })),
       
-      updateProfile: (updates) => 
+      updateProfile: async (updates) => {
+        const token = get().session?.accessToken;
+        const currentUser = get().currentUser;
+        if (!currentUser) return;
+        const [firstName, ...restName] = (updates.name || currentUser.name).split(' ');
+        const payload: Record<string, unknown> = {
+          first_name: firstName,
+          last_name: restName.join(' '),
+          bio: updates.bio ?? currentUser.bio,
+          occupation: updates.job ?? currentUser.job,
+          education: updates.education ?? currentUser.education,
+          interests: updates.interests ?? currentUser.interests,
+          relationship_goal: updates.relationshipGoal ?? currentUser.relationshipGoal,
+        };
+        const nextPreferences = {
+          minAge: updates.preferences?.minAge ?? currentUser.preferences.minAge,
+          maxAge: updates.preferences?.maxAge ?? currentUser.preferences.maxAge,
+          maxDistanceKm: updates.preferences?.maxDistanceKm ?? currentUser.preferences.maxDistanceKm,
+          interestedIn: updates.preferences?.interestedIn ?? currentUser.preferences.interestedIn,
+          showMe: updates.preferences?.showMe ?? currentUser.preferences.showMe,
+        };
+        if (token) {
+          await api.updateMe(token, payload);
+          if (updates.photos) {
+            const urls = updates.photos.filter((photo) => /^https?:\/\//.test(photo));
+            if (urls.length) {
+              await api.replaceImages(token, urls);
+            }
+          }
+          await api.updatePreferences(token, {
+            min_age: nextPreferences.minAge,
+            max_age: nextPreferences.maxAge,
+            max_distance_km: nextPreferences.maxDistanceKm,
+            interested_in: nextPreferences.interestedIn,
+            show_me: nextPreferences.showMe,
+          });
+        }
         set((state) => ({
-          currentUser: state.currentUser ? { ...state.currentUser, ...updates } : null
-        })),
+          currentUser: state.currentUser
+            ? { ...state.currentUser, ...updates, preferences: { ...state.currentUser.preferences, ...updates.preferences } }
+            : null,
+        }));
+      },
 
-      markNotificationRead: (id) =>
+      markNotificationRead: async (id) => {
+        const token = get().session?.accessToken;
+        if (token) {
+          await api.markNotificationRead(token, id);
+        }
         set((state) => ({
-          notifications: state.notifications.map((n) =>
-            n.id === id ? { ...n, isRead: true } : n
-          ),
-        })),
+          notifications: state.notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+        }));
+      },
 
-      markAllNotificationsRead: () =>
+      markAllNotificationsRead: async () => {
+        const token = get().session?.accessToken;
+        const unreadIds = get()
+          .notifications.filter((notification) => !notification.isRead)
+          .map((notification) => notification.id);
+        if (token && unreadIds.length) {
+          await Promise.all(unreadIds.map((id) => api.markNotificationRead(token, id)));
+        }
         set((state) => ({
           notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
-        })),
+        }));
+      },
+
+      reportUser: async (userId, reason, details = '') => {
+        const token = get().session?.accessToken;
+        if (!token) return;
+        await api.report(token, userId, reason, details);
+      },
+
+      blockUser: async (userId) => {
+        const token = get().session?.accessToken;
+        if (!token) return;
+        await api.block(token, userId);
+        set((state) => ({
+          matches: state.matches.filter((match) => match.id !== userId),
+        }));
+      },
 
       addNotification: (notification) =>
         set((state) => ({
@@ -159,14 +453,113 @@ export const useStore = create<AppState>()(
             ? { ...state.currentUser, boosts: state.currentUser.boosts - 1 }
             : state.currentUser,
         })),
+      refreshOnboardingStatus: async () => {
+        const token = get().session?.accessToken;
+        if (!token) return null;
+        const status = await api.onboardingStatus(token);
+        const data = status.data || null;
+        set((state) => ({
+          onboardingStatus: data,
+          accountState: state.accountState
+            ? {
+                ...state.accountState,
+                onboarding_completed: Boolean(data?.onboarding?.completed ?? state.accountState.onboarding_completed),
+                onboarding_step:
+                  typeof data?.onboarding?.step === 'number' ? data.onboarding.step : state.accountState.onboarding_step,
+                verification_status:
+                  typeof data?.verification?.status === 'string'
+                    ? data.verification.status
+                    : state.accountState.verification_status,
+              }
+            : state.accountState,
+        }));
+        return data;
+      },
+      searchUniversities: async (search) => {
+        const token = get().session?.accessToken;
+        if (!token) return [];
+        const response = await api.universities(token, search);
+        const universities = response.data?.universities || [];
+        set({ universities });
+        return universities;
+      },
+      uploadVerificationDocument: async (file) => {
+        const currentUserId = get().currentUser?.id || crypto.randomUUID();
+        return api.uploadVerificationDocument(file, currentUserId);
+      },
+      uploadProfilePhoto: async (file) => {
+        const currentUserId = get().currentUser?.id || crypto.randomUUID();
+        return api.uploadProfilePhoto(file, currentUserId);
+      },
+      submitOnboardingAndVerification: async (payload) => {
+        const token = get().session?.accessToken;
+        if (!token) return null;
+        const validPhotoUrls = payload.photo_urls.filter((url) => /^https?:\/\//.test(url));
+        if (validPhotoUrls.length) {
+          await api.replaceImages(token, validPhotoUrls);
+        }
+        await api.onboardingBasics(token, {
+          first_name: payload.first_name,
+          last_name: payload.last_name,
+          birth_date: payload.birth_date,
+          gender: payload.gender,
+          pronouns: payload.pronouns || '',
+          height_cm: payload.height_cm,
+        });
+        await api.onboardingAbout(token, {
+          bio: payload.bio,
+          occupation: payload.occupation,
+          education: payload.education,
+        });
+        await api.onboardingInterests(token, payload.interests);
+        await api.onboardingGoals(token, payload.relationship_goals);
+        if (payload.university_id) {
+          await api.onboardingPreferences(token, {
+            interested_in: payload.interested_in,
+            min_age: payload.min_age,
+            max_age: payload.max_age,
+            max_distance_km: payload.max_distance_km,
+            show_me_on_ignite: payload.show_me_on_ignite,
+            university_id: payload.university_id,
+          });
+        }
+        const verificationBody = payload.university_id
+          ? {
+              university_id: payload.university_id,
+              document_url: payload.document_url,
+              phone_number: payload.phone_number,
+            }
+          : {
+              custom_university_name: payload.custom_university_name || '',
+              document_url: payload.document_url,
+              phone_number: payload.phone_number,
+            };
+        const verificationResponse = await api.submitVerification(token, verificationBody);
+        await get().hydrateFromApi();
+        await get().refreshOnboardingStatus();
+        return verificationResponse.data?.verification_request || null;
+      },
     }),
     {
       name: 'ignite-storage',
       partialize: (state) => ({ 
-        currentUser: state.currentUser, 
+        currentUser: state.currentUser,
+        session: state.session,
         isPro: state.isPro,
-        notifications: state.notifications 
+        notifications: state.notifications,
+        accountState: state.accountState,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        state.notifications = state.notifications.map((notification) => ({
+          ...notification,
+          timestamp: notification.timestamp instanceof Date ? notification.timestamp : new Date(notification.timestamp),
+        }));
+        state.matches = state.matches.map((match) => ({
+          ...match,
+          timestamp: match.timestamp instanceof Date ? match.timestamp : new Date(match.timestamp),
+        }));
+      },
     }
   )
 );

@@ -4,20 +4,20 @@ import Footer from "@/components/marketing/Footer";
 import HeroSection from "@/components/marketing/HeroSection";
 import HowItWorks from "@/components/marketing/HowItWorks";
 import PricingPreview from "@/components/marketing/PricingPreview";
-import SwipeDemo from "@/components/marketing/SwipeDemo";
 import StatsBar from "@/components/marketing/StatsBar";
+import SwipeDemo from "@/components/marketing/SwipeDemo";
 import Testimonials from "@/components/marketing/Testimonials";
 
 export default function MarketingPage() {
   return (
-    <main className="overflow-x-clip bg-background">
+    <main>
       <HeroSection />
       <StatsBar />
-      <HowItWorks />
       <FeaturesShowcase />
+      <HowItWorks />
       <SwipeDemo />
-      <Testimonials />
       <PricingPreview />
+      <Testimonials />
       <CtaBanner />
       <Footer />
     </main>

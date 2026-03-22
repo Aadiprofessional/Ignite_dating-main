@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthLayout } from "@/components/shared/AuthLayout";
+import { useStore } from "@/lib/store";
 
 const signupSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
@@ -23,7 +25,10 @@ const signupSchema = z.object({
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
+  const router = useRouter();
+  const { signup } = useStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [signupError, setSignupError] = useState<string | null>(null);
 
   const {
     register,
@@ -35,11 +40,23 @@ export default function SignupPage() {
 
   const onSubmit = async (data: SignupFormValues) => {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    setSignupError(null);
+    const [firstName, ...rest] = data.fullName.trim().split(" ");
+    try {
+      await signup({
+        email: data.email,
+        password: data.password,
+        first_name: firstName,
+        last_name: rest.join(" "),
+        birthdate: data.dob,
+      });
+      router.push(`/login?email=${encodeURIComponent(data.email)}&emailConfirmRequired=1`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Signup failed";
+      setSignupError(message);
+    } finally {
       setIsLoading(false);
-      console.log(data);
-    }, 2000);
+    }
   };
 
   return (
@@ -56,6 +73,11 @@ export default function SignupPage() {
       <div className="grid gap-6">
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="grid gap-4">
+            {signupError && (
+              <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-center text-sm text-red-400">
+                {signupError}
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="fullName">Full Name</Label>
               <Input

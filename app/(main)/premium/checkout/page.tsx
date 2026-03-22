@@ -5,7 +5,7 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Lock, ShieldCheck, CreditCard } from "lucide-react";
+import { ChevronLeft, Lock, ShieldCheck, CreditCard, Star } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 

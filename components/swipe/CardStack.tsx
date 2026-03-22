@@ -1,20 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, useMotionValue, useTransform, AnimatePresence, PanInfo } from "framer-motion";
-import { Profile, mockProfiles } from "@/lib/mockProfiles";
+import { Profile } from "@/lib/mockProfiles";
 import { ProfileCard } from "./ProfileCard";
 import { ActionButtons } from "@/components/swipe/ActionButtons";
 import { MatchModal } from "@/components/swipe/MatchModal";
 import { ProfileDetailDrawer } from "@/components/swipe/ProfileDetailDrawer";
+import { useStore } from "@/lib/store";
 
 export function CardStack() {
-  const [cards, setCards] = useState<Profile[]>(mockProfiles);
+  const { discoverProfiles, refreshDiscover, sendSwipe } = useStore();
+  const [cards, setCards] = useState<Profile[]>(discoverProfiles);
   const [swipedCards, setSwipedCards] = useState<Profile[]>([]); // To support rewind
   const [matchProfile, setMatchProfile] = useState<Profile | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
   const [exitDirection, setExitDirection] = useState<"left" | "right" | "up" | null>(null);
+
+  useEffect(() => {
+    if (discoverProfiles.length > 0) {
+      setCards(discoverProfiles);
+      return;
+    }
+    void refreshDiscover({ limit: 24 });
+  }, [discoverProfiles, refreshDiscover]);
 
   // Motion Values for the top card
   const x = useMotionValue(0);
@@ -22,28 +32,29 @@ export function CardStack() {
   
   // Transforms
   const rotate = useTransform(x, [-300, 300], [-30, 30]);
-  const opacity = useTransform(x, [-300, -150, 0, 150, 300], [0, 1, 1, 1, 0]);
   
   // Background Flash Opacity
   const crimsonFlashOpacity = useTransform(x, [50, 150], [0, 0.3]);
   const whiteFlashOpacity = useTransform(x, [-150, -50], [0.15, 0]);
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
-    const threshold = 150;
-    if (info.offset.x > threshold) {
-      triggerLike();
-    } else if (info.offset.x < -threshold) {
-      triggerPass();
-    } else if (info.offset.y < -threshold) {
-      triggerSuperLike();
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const horizontalThreshold = 140;
+    const verticalThreshold = 150;
+    const absX = Math.abs(info.offset.x);
+    const absY = Math.abs(info.offset.y);
+    if (absY > absX && info.offset.y < -verticalThreshold) {
+      void triggerSuperLike();
+    } else if (info.offset.x > horizontalThreshold) {
+      void triggerLike();
+    } else if (info.offset.x < -horizontalThreshold) {
+      void triggerPass();
     } else {
-      // Reset position
       x.set(0);
       y.set(0);
     }
   };
 
-  const triggerLike = () => {
+  const triggerLike = async () => {
     const currentCard = cards[0];
     if (!currentCard) return;
 
@@ -54,47 +65,46 @@ export function CardStack() {
 
     setExitDirection("right");
     setTimeout(() => removeCard(currentCard), 50); // Small delay to ensure state update
+    await sendSwipe(currentCard.id, "like");
   };
 
-  const triggerPass = () => {
+  const triggerPass = async () => {
     const currentCard = cards[0];
     if (!currentCard) return;
     setExitDirection("left");
     setTimeout(() => removeCard(currentCard), 50);
+    await sendSwipe(currentCard.id, "pass");
   };
 
-  const triggerSuperLike = () => {
+  const triggerSuperLike = async () => {
     const currentCard = cards[0];
     if (!currentCard) return;
     setExitDirection("up");
     setTimeout(() => removeCard(currentCard), 50);
+    await sendSwipe(currentCard.id, "superlike");
   };
 
   const removeCard = (card: Profile) => {
-    // Add to swiped history
-    setSwipedCards([...swipedCards, card]);
-    
-    // Remove from stack
-    const newCards = cards.slice(1);
-    setCards(newCards);
-    
-    // Reset motion values for the NEW top card
+    setSwipedCards((previous) => [...previous, card]);
+    setCards((previous) => previous.slice(1));
     x.set(0);
     y.set(0);
   };
 
   const handleRewind = () => {
-    if (swipedCards.length === 0) return;
-    const lastSwiped = swipedCards[swipedCards.length - 1];
-    setSwipedCards(swipedCards.slice(0, -1));
-    setCards([lastSwiped, ...cards]);
-    setExitDirection(null);
+    setSwipedCards((previous) => {
+      if (!previous.length) return previous;
+      const lastSwiped = previous[previous.length - 1];
+      setCards((current) => [lastSwiped, ...current]);
+      setExitDirection(null);
+      return previous.slice(0, -1);
+    });
   };
 
   // Action Button Handlers
-  const onSwipeLeft = () => triggerPass();
-  const onSwipeRight = () => triggerLike();
-  const onSuperLike = () => triggerSuperLike();
+  const onSwipeLeft = () => void triggerPass();
+  const onSwipeRight = () => void triggerLike();
+  const onSuperLike = () => void triggerSuperLike();
 
   // Animation Variants
   const cardVariants = {
@@ -132,10 +142,12 @@ export function CardStack() {
         <h2 className="font-serif text-2xl text-white mb-2">No more profiles</h2>
         <p className="font-mono text-zinc-500 text-sm">Check back later for more matches.</p>
         <button 
-          onClick={() => setCards(mockProfiles)} 
+          onClick={() => {
+            void refreshDiscover({ limit: 24 });
+          }} 
           className="mt-6 px-6 py-2 bg-crimson text-white font-bold rounded-full hover:bg-crimson/80 transition-colors"
         >
-          Reset Demo
+          Refresh Profiles
         </button>
       </div>
     );
@@ -157,7 +169,7 @@ export function CardStack() {
       />
 
       {/* Card Stack */}
-      <div className="relative z-10 h-[66vh] w-full max-w-[380px] lg:h-[70vh] lg:max-w-[460px] xl:max-w-[520px]">
+      <div className="relative z-10 h-[66vh] w-full max-w-[380px] md:max-w-[420px] lg:h-[70vh] lg:max-w-[460px] xl:max-w-[520px]">
         <AnimatePresence custom={exitDirection}>
           {visibleCards.map((profile, index) => {
             const isTop = index === 0;
@@ -173,6 +185,7 @@ export function CardStack() {
                 drag={isTop ? true : false}
                 dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                 dragElastic={0.6}
+                dragMomentum={false}
                 onDragEnd={isTop ? handleDragEnd : undefined}
                 className="absolute inset-0"
                 onClick={() => {
@@ -227,11 +240,11 @@ export function CardStack() {
              profile={activeProfile} 
              onClose={() => setIsDetailOpen(false)}
              onLike={() => {
-               triggerLike();
+               void triggerLike();
                setIsDetailOpen(false);
              }}
              onPass={() => {
-               triggerPass();
+               void triggerPass();
                setIsDetailOpen(false);
              }}
            />

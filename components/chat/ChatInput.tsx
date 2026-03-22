@@ -25,42 +25,33 @@ export function ChatInput() {
   ];
 
   return (
-    <>
+    <div className="sticky bottom-0 z-30">
       <AnimatePresence>
         {isMediaOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-              onClick={() => setIsMediaOpen(false)}
-            />
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              className="fixed bottom-[80px] left-0 right-0 z-50 bg-[#0A0A0A] border-t border-zinc-800 rounded-t-2xl p-6"
-            >
-              <div className="grid grid-cols-5 gap-4">
-                {mediaOptions.map((option) => (
-                  <button
-                    key={option.label}
-                    className="flex flex-col items-center gap-2 group"
-                  >
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110 ${option.color}`}>
-                      <option.icon size={24} />
-                    </div>
-                    <span className="text-xs font-mono text-zinc-400">{option.label}</span>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </>
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 20, opacity: 0 }}
+            className="absolute bottom-full left-0 right-0 z-40 mb-2 rounded-2xl border border-zinc-800 bg-[#0A0A0A] p-6 shadow-2xl"
+          >
+            <div className="grid grid-cols-5 gap-4">
+              {mediaOptions.map((option) => (
+                <button
+                  key={option.label}
+                  className="flex flex-col items-center gap-2 group"
+                >
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110 ${option.color}`}>
+                    <option.icon size={24} />
+                  </div>
+                  <span className="text-xs font-mono text-zinc-400">{option.label}</span>
+                </button>
+              ))}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#080808]/90 backdrop-blur-md border-t border-zinc-900 pb-safe">
+      <div className="bg-[#080808]/90 backdrop-blur-md border-t border-zinc-900 pb-safe">
         <div className="flex items-center gap-3 p-3">
           <button
             onClick={() => setIsMediaOpen(!isMediaOpen)}
@@ -107,6 +98,6 @@ export function ChatInput() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }

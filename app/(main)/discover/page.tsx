@@ -2,25 +2,35 @@
 
 import { FilterDrawer } from "@/components/discover/FilterDrawer";
 import { ProfileGrid } from "@/components/discover/ProfileGrid";
-import { mockProfiles } from "@/lib/mockProfiles";
+import { useStore } from "@/lib/store";
 import { Search, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function DiscoverPage() {
+  const { discoverProfiles, refreshDiscover } = useStore();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeChip, setActiveChip] = useState("Near Me");
   const [searchQuery, setSearchQuery] = useState("");
-  const [profiles, setProfiles] = useState(mockProfiles);
 
   const filterChips = ["Near Me", "New", "Online", "Verified", "Popular", "Recently Active"];
 
+  useEffect(() => {
+    if (discoverProfiles.length > 0) return;
+    void refreshDiscover({ limit: 24 });
+  }, [discoverProfiles.length, refreshDiscover]);
+
+  const profiles = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) return discoverProfiles;
+    return discoverProfiles.filter((profile) => {
+      const byName = profile.name.toLowerCase().includes(normalizedQuery);
+      const byInterest = profile.interests.some((interest) => interest.toLowerCase().includes(normalizedQuery));
+      return byName || byInterest;
+    });
+  }, [discoverProfiles, searchQuery]);
+
   const handleLoadMore = () => {
-    // Simulate loading more profiles by appending the same mock data
-    // In a real app, this would fetch the next page
-    setProfiles((prev) => [
-      ...prev,
-      ...mockProfiles.map((p) => ({ ...p, id: `${p.id}-${Date.now()}` })),
-    ]);
+    void refreshDiscover({ limit: 48, search: searchQuery || undefined });
   };
 
   return (
@@ -89,7 +99,6 @@ export default function DiscoverPage() {
         </aside>
         <ProfileGrid profiles={profiles} onLoadMore={handleLoadMore} />
       </main>
-
       {/* Filter Drawer */}
       <FilterDrawer isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} />
     </div>

@@ -11,7 +11,7 @@ interface ChatHeaderProps {
 
 export function ChatHeader({ match, onProfileClick }: ChatHeaderProps) {
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-[#080808]/90 backdrop-blur-md border-b border-zinc-900/50">
+    <div className="z-20 flex shrink-0 items-center justify-between border-b border-zinc-900/50 bg-[#080808]/90 p-4 backdrop-blur-md">
       <Link href="/matches" className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors">
         <ArrowLeft size={24} />
       </Link>

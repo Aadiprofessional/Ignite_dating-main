@@ -87,9 +87,9 @@ export default function ProfilePage() {
             </div>
             <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Matches", value: "128", icon: Heart, color: "text-crimson" },
-            { label: "Likes", value: "850+", icon: Star, color: "text-amber-500" },
-            { label: "Views", value: "1.2k", icon: Zap, color: "text-purple-500" }
+            { label: "Matches", value: String(currentUser.stats.matches), icon: Heart, color: "text-crimson" },
+            { label: "Likes", value: String(currentUser.stats.likesReceived), icon: Star, color: "text-amber-500" },
+            { label: "Views", value: String(currentUser.stats.profileViews), icon: Zap, color: "text-purple-500" }
           ].map((stat, i) => (
             <motion.div
               key={stat.label}

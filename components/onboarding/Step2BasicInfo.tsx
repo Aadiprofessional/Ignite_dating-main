@@ -40,15 +40,21 @@ export default function Step2BasicInfo() {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="text-zinc-400 font-mono text-xs uppercase">First Name</Label>
-            <div className="p-3 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-500 cursor-not-allowed">
-              {data.firstName}
-            </div>
+            <Input
+              value={data.firstName}
+              onChange={(e) => updateData({ firstName: e.target.value })}
+              className="bg-transparent border-zinc-700 focus:border-crimson text-white"
+              placeholder="First name"
+            />
           </div>
           <div className="space-y-2">
             <Label className="text-zinc-400 font-mono text-xs uppercase">Last Name</Label>
-            <div className="p-3 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-500 cursor-not-allowed">
-              {data.lastName}
-            </div>
+            <Input
+              value={data.lastName}
+              onChange={(e) => updateData({ lastName: e.target.value })}
+              className="bg-transparent border-zinc-700 focus:border-crimson text-white"
+              placeholder="Last name"
+            />
           </div>
         </div>
 
@@ -56,9 +62,12 @@ export default function Step2BasicInfo() {
         <div className="space-y-2">
           <Label className="text-zinc-400 font-mono text-xs uppercase">Birthday</Label>
           <div className="flex gap-4">
-            <div className="flex-1 p-3 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-500 cursor-not-allowed">
-              {data.birthday}
-            </div>
+            <Input
+              type="date"
+              value={data.birthday}
+              onChange={(e) => updateData({ birthday: e.target.value })}
+              className="flex-1 bg-transparent border-zinc-700 focus:border-crimson text-white"
+            />
             <div className="w-20 flex items-center justify-center p-3 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono">
               {calculateAge(data.birthday)}
             </div>
@@ -128,7 +137,7 @@ export default function Step2BasicInfo() {
         </Button>
         <Button
           onClick={nextStep}
-          disabled={!data.gender || !data.height}
+          disabled={!data.firstName.trim() || !data.lastName.trim() || !data.birthday || !data.gender || !data.height}
           className="bg-crimson hover:bg-crimson/90 text-white font-mono px-8"
         >
           Next Step

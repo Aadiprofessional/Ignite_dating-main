@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { FlameLogo } from "@/components/ui/flame-logo";
 
 export default function VerifyPage() {
+  const [email, setEmail] = useState("user@example.com");
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -21,6 +22,14 @@ export default function VerifyPage() {
       return () => clearInterval(timer);
     }
   }, [countdown]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const value = params.get("email");
+    if (value) {
+      setEmail(value);
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const value = e.target.value;
@@ -79,7 +88,7 @@ export default function VerifyPage() {
           <FlameLogo className="mb-6 h-12 w-12 text-crimson" />
           <h1 className="text-2xl font-serif font-bold text-white">Verify your email</h1>
           <p className="mt-2 text-sm text-white/60">
-            We sent a code to <span className="text-white">user@example.com</span>
+            We sent a code to <span className="text-white">{email}</span>
           </p>
         </div>
 

@@ -1,16 +1,35 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, MessageCircle, Search, User, Users, Sparkles, Compass, ShieldCheck } from "lucide-react";
+import { Flame, MessageCircle, Search, User, Users, Sparkles, Compass, ShieldCheck, CalendarRange } from "lucide-react";
+import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "./BottomNav";
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const pathname = usePathname();
-  const { matches, currentUser } = useStore();
+  const { matches, currentUser, session, hydrateFromApi, refreshOnboardingStatus, accountState, onboardingStatus } = useStore();
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+    const run = async () => {
+      await hydrateFromApi();
+      await refreshOnboardingStatus();
+    };
+    void run();
+  }, [session?.accessToken, hydrateFromApi, refreshOnboardingStatus]);
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+    const canUseApp = Boolean(accountState?.can_use_app || onboardingStatus?.verification?.status === "approved");
+    if (!canUseApp) {
+      router.replace("/setup");
+    }
+  }, [session?.accessToken, accountState?.can_use_app, onboardingStatus?.verification?.status, router]);
 
   const hideNavRoutes = ["/messages/"];
   const showNav = !hideNavRoutes.some((route) => pathname.includes(route) && pathname !== "/messages");
@@ -18,6 +37,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { href: "/home", icon: Flame, label: "Home" },
     { href: "/discover", icon: Search, label: "Discover" },
+    { href: "/events", icon: CalendarRange, label: "Events" },
     { href: "/matches", icon: Users, label: "Matches", badge: unreadMatches },
     { href: "/messages", icon: MessageCircle, label: "Messages" },
     { href: "/profile", icon: User, label: "Profile" },

@@ -2,15 +2,16 @@
 
 import { Match } from "@/lib/mockMatches";
 import { motion } from "framer-motion";
-import { X, Heart, ShieldAlert, Flag } from "lucide-react";
+import { ShieldAlert, Flag } from "lucide-react";
 
 interface MiniProfileDrawerProps {
   match: Match;
   onClose: () => void;
   onUnmatch: () => void;
+  onReport: () => void;
 }
 
-export function MiniProfileDrawer({ match, onClose, onUnmatch }: MiniProfileDrawerProps) {
+export function MiniProfileDrawer({ match, onClose, onUnmatch, onReport }: MiniProfileDrawerProps) {
   return (
     <>
       {/* Backdrop */}
@@ -45,7 +46,7 @@ export function MiniProfileDrawer({ match, onClose, onUnmatch }: MiniProfileDraw
               )}
             </div>
             <h2 className="font-serif font-bold text-3xl text-white mb-1">{match.name}</h2>
-            {match.verified && (
+            {match.isVerified && (
                <div className="flex items-center gap-1 bg-blue-500/10 text-blue-400 px-3 py-0.5 rounded-full border border-blue-500/20 text-xs font-medium">
                  Verified Profile
                </div>
@@ -87,7 +88,7 @@ export function MiniProfileDrawer({ match, onClose, onUnmatch }: MiniProfileDraw
                Unmatch {match.name}
              </button>
              
-             <button className="w-full py-4 bg-transparent text-zinc-500 font-mono text-xs hover:text-white transition-colors flex items-center justify-center gap-2">
+             <button onClick={onReport} className="w-full py-4 bg-transparent text-zinc-500 font-mono text-xs hover:text-white transition-colors flex items-center justify-center gap-2">
                <Flag size={14} />
                Report Profile
              </button>

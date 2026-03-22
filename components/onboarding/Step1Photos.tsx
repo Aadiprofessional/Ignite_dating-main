@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import { useOnboarding, Photo } from '@/context/OnboardingContext';
 import { Button } from '@/components/ui/button';
 import { Camera, X, GripVertical } from 'lucide-react';
+import { useStore } from '@/lib/store';
 import {
   DndContext,
   closestCenter,
@@ -22,20 +22,6 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-
-// Helper to simulate file upload
-const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, addPhoto: (url: string) => void) => {
-  const file = e.target.files?.[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        addPhoto(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
-  }
-};
 
 interface SortablePhotoProps {
   photo: Photo;
@@ -94,29 +80,41 @@ const SortablePhoto = ({ photo, index, onRemove }: SortablePhotoProps) => {
   );
 };
 
-const EmptySlot = ({ index, onAdd }: { index: number; onAdd: (url: string) => void }) => {
+const EmptySlot = ({
+  index,
+  onAdd,
+  disabled,
+}: {
+  index: number;
+  onAdd: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  disabled: boolean;
+}) => {
   return (
     <label
       className={`relative flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-zinc-800 hover:border-crimson rounded-xl transition-colors bg-zinc-900/30 hover:bg-zinc-900/50 ${
         index === 0 ? 'col-span-2 row-span-2 aspect-[3/4]' : 'col-span-1 row-span-1 aspect-[3/4]'
-      }`}
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       <input
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={(e) => handleFileUpload(e, onAdd)}
+        onChange={onAdd}
+        disabled={disabled}
       />
       <div className="p-3 rounded-full bg-zinc-800 text-zinc-400 mb-2">
         <Camera size={24} />
       </div>
-      <span className="text-xs text-zinc-500 font-dm-mono">Add Photo</span>
+      <span className="text-xs text-zinc-500 font-dm-mono">{disabled ? 'Uploading...' : 'Add Photo'}</span>
     </label>
   );
 };
 
 export default function Step1Photos() {
+  const { uploadProfilePhoto } = useStore();
   const { data, updateData, nextStep } = useOnboarding();
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -131,6 +129,22 @@ export default function Step1Photos() {
         url,
       };
       updateData({ photos: [...data.photos, newPhoto] });
+    }
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setPhotoUploadError(null);
+    setIsUploadingPhoto(true);
+    try {
+      const url = await uploadProfilePhoto(file);
+      handleAddPhoto(url);
+    } catch (error) {
+      setPhotoUploadError(error instanceof Error ? error.message : 'Failed to upload photo.');
+    } finally {
+      setIsUploadingPhoto(false);
+      event.target.value = '';
     }
   };
 
@@ -176,7 +190,8 @@ export default function Step1Photos() {
                   <EmptySlot
                     key={`empty-${index}`}
                     index={index}
-                    onAdd={handleAddPhoto}
+                    onAdd={(event) => void handleFileSelect(event)}
+                    disabled={isUploadingPhoto}
                   />
                 );
               }
@@ -184,11 +199,12 @@ export default function Step1Photos() {
           </div>
         </SortableContext>
       </DndContext>
+      {photoUploadError ? <p className="text-sm text-crimson mb-4">{photoUploadError}</p> : null}
 
       <div className="mt-auto flex justify-end">
         <Button
           onClick={nextStep}
-          disabled={data.photos.length < 1}
+          disabled={data.photos.length < 1 || isUploadingPhoto}
           className="bg-crimson hover:bg-crimson/90 text-white font-dm-mono px-8"
         >
           Next Step

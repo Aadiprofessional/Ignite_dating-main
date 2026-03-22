@@ -2,19 +2,18 @@
 
 import { Profile } from "@/lib/mockProfiles";
 import { cn } from "@/lib/utils";
-import { motion, MotionValue, useTransform } from "framer-motion";
+import { motion, MotionStyle, MotionValue, useTransform } from "framer-motion";
 import { MapPin } from "lucide-react";
 
 interface ProfileCardProps {
   profile: Profile;
-  style?: any;
+  style?: MotionStyle;
   drag?: boolean;
-  onDragEnd?: (event: any, info: any) => void;
   x?: MotionValue<number>;
   y?: MotionValue<number>;
 }
 
-export function ProfileCard({ profile, style, drag, onDragEnd, x, y }: ProfileCardProps) {
+export function ProfileCard({ profile, style, drag, x, y }: ProfileCardProps) {
   // Like/Pass/SuperLike Opacity Transforms
   const likeOpacity = useTransform(x || new MotionValue(0), [50, 150], [0, 1]);
   const passOpacity = useTransform(x || new MotionValue(0), [-150, -50], [1, 0]);
@@ -23,10 +22,6 @@ export function ProfileCard({ profile, style, drag, onDragEnd, x, y }: ProfileCa
   return (
     <motion.div
       style={style}
-      drag={drag ? true : false} // Allow drag in any direction if true, but we usually constrain it
-      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }} // Snap back if released
-      dragElastic={0.6} // Rubber band effect
-      onDragEnd={onDragEnd}
       whileTap={{ scale: 1.02 }}
       className={cn(
         "relative h-[66vh] w-full max-w-[380px] overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900 shadow-2xl cursor-grab active:cursor-grabbing lg:h-[70vh] lg:max-w-[460px] xl:max-w-[520px]",

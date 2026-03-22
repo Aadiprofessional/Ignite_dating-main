@@ -8,25 +8,25 @@ export type Photo = {
 };
 
 export type OnboardingData = {
-  // Step 1
   photos: Photo[];
-  // Step 2
-  firstName: string; // Read-only from signup
-  lastName: string;  // Read-only from signup
-  birthday: string;  // Read-only from signup
+  firstName: string;
+  lastName: string;
+  birthday: string;
   gender: string;
   pronouns: string;
-  height: number; // in cm
+  height: number;
   heightUnit: 'cm' | 'ft';
-  // Step 3
   bio: string;
   occupation: string;
   education: string;
-  // Step 4
+  universityQuery: string;
+  universityId: string;
+  universityName: string;
+  phoneNumber: string;
+  verificationDocumentUrl: string;
+  verificationDocumentName: string;
   interests: string[];
-  // Step 5
   relationshipGoal: 'Casual' | 'Serious' | 'Friends' | 'Open' | '';
-  // Step 6
   interestedIn: string[];
   ageRange: [number, number];
   distance: number;
@@ -46,9 +46,9 @@ interface OnboardingContextType {
 
 const defaultData: OnboardingData = {
   photos: [],
-  firstName: 'Alex', // Mock data for now
-  lastName: 'Doe',
-  birthday: '1998-05-15',
+  firstName: '',
+  lastName: '',
+  birthday: '',
   gender: '',
   pronouns: '',
   height: 170,
@@ -56,6 +56,12 @@ const defaultData: OnboardingData = {
   bio: '',
   occupation: '',
   education: '',
+  universityQuery: 'Hong Kong',
+  universityId: '',
+  universityName: '',
+  phoneNumber: '',
+  verificationDocumentUrl: '',
+  verificationDocumentName: '',
   interests: [],
   relationshipGoal: '',
   interestedIn: [],
@@ -70,7 +76,7 @@ const OnboardingContext = createContext<OnboardingContextType | undefined>(undef
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [currentStep, setStep] = useState(1);
   const [data, setData] = useState<OnboardingData>(defaultData);
-  const totalSteps = 6; // Plus preview step effectively
+  const totalSteps = 6;
 
   const nextStep = () => setStep((prev) => Math.min(prev + 1, totalSteps + 1));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));

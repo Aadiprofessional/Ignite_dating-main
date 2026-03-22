@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight, Bell, Lock, Globe, Smartphone, LogOut, Trash2, Moon, Volume2, Shield } from "lucide-react";
 import { motion } from "framer-motion";
+import { useStore } from "@/lib/store";
 
 function SettingSection({ title, children }: { title: string, children: React.ReactNode }) {
   return (
@@ -68,6 +69,7 @@ function SettingItem({
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { logout } = useStore();
   const [distance, setDistance] = useState(50);
   const [ageRange, setAgeRange] = useState([18, 35]);
   const [showMe, setShowMe] = useState(true);
@@ -163,7 +165,13 @@ export default function SettingsPage() {
 
         {/* Danger Zone */}
         <div className="space-y-4 mt-8 mb-12">
-          <button className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2">
+          <button
+            onClick={() => {
+              logout();
+              router.push("/login");
+            }}
+            className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+          >
             <LogOut className="w-4 h-4" />
             Log Out
           </button>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AuthLayout } from "@/components/shared/AuthLayout";
+import { useStore } from "@/lib/store";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -22,31 +24,49 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { login } = useStore();
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
 
+  useEffect(() => {
+    const email = searchParams.get("email");
+    const emailConfirmRequired = searchParams.get("emailConfirmRequired");
+    if (emailConfirmRequired === "1") {
+      setNotice("Please confirm your email, then login.");
+    }
+    if (email) {
+      setValue("email", email);
+    }
+  }, [searchParams, setValue]);
+
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     setAuthError(null);
-    
-    // Simulate API call with error
-    setTimeout(() => {
+    try {
+      await login(data.email, data.password);
+      const { accountState: nextAccountState, onboardingStatus: nextOnboardingStatus } = useStore.getState();
+      const verificationStatus =
+        nextOnboardingStatus?.verification?.status || nextAccountState?.verification_status || "pending_submission";
+      const canUseApp = Boolean(nextAccountState?.can_use_app || verificationStatus === "approved");
+      router.push(canUseApp ? "/home" : "/setup");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Invalid email or password";
+      setAuthError(message);
+    } finally {
       setIsLoading(false);
-      // Randomly fail to demonstrate error shake
-      if (Math.random() > 0.5) {
-        setAuthError("Invalid email or password");
-      } else {
-        console.log("Logged in:", data);
-      }
-    }, 1500);
+    }
   };
 
   return (
@@ -67,6 +87,11 @@ export default function LoginPage() {
             animate={authError ? { x: [0, -10, 10, -10, 10, 0] } : {}}
             transition={{ duration: 0.5 }}
           >
+            {notice && (
+              <div className="p-3 text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-md text-center">
+                {notice}
+              </div>
+            )}
             {authError && (
               <div className="p-3 text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-md text-center">
                 {authError}

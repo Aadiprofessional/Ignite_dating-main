@@ -1,7 +1,7 @@
 "use client";
 
 import { useStore, AppNotification } from "@/lib/store";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, Heart, MessageCircle, Star, Shield, Info, CheckCheck } from "lucide-react";
 import Image from "next/image";
@@ -44,8 +44,12 @@ const getBgColor = (type: AppNotification['type']) => {
 };
 
 export default function NotificationsPage() {
-  const { notifications, markNotificationRead, markAllNotificationsRead } = useStore();
+  const { notifications, markNotificationRead, markAllNotificationsRead, refreshNotifications } = useStore();
   const [filter, setFilter] = useState<'all' | 'match' | 'system'>('all');
+
+  useEffect(() => {
+    void refreshNotifications(30);
+  }, [refreshNotifications]);
 
   const filteredNotifications = notifications.filter(n => {
     if (filter === 'all') return true;
@@ -61,7 +65,7 @@ export default function NotificationsPage() {
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
           <h1 className="font-serif text-2xl font-bold">Notifications</h1>
           <button 
-            onClick={markAllNotificationsRead}
+            onClick={() => void markAllNotificationsRead()}
             className="p-2 text-white/50 transition-colors hover:text-white"
           >
             <CheckCheck className="w-5 h-5" />
@@ -72,10 +76,10 @@ export default function NotificationsPage() {
       <div className="mx-auto w-full max-w-6xl px-4 pt-6 lg:px-8">
         {/* Filter Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-          {['all', 'match', 'system'].map((f) => (
+          {(['all', 'match', 'system'] as const).map((f) => (
             <button
               key={f}
-              onClick={() => setFilter(f as any)}
+              onClick={() => setFilter(f)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
                 filter === f 
                   ? 'bg-white text-black border-white' 
@@ -107,7 +111,7 @@ export default function NotificationsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  onClick={() => markNotificationRead(notification.id)}
+                  onClick={() => void markNotificationRead(notification.id)}
                   className={`relative p-4 rounded-2xl border transition-colors cursor-pointer group ${
                     notification.isRead 
                       ? 'bg-transparent border-white/5' 
