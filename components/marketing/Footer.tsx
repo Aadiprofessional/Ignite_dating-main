@@ -44,7 +44,7 @@ export default function Footer() {
       transition={{ duration: 0.7 }}
       className="border-t border-white/6 bg-[#050505] pb-10 pt-20"
     >
-      <div className="mx-auto w-full max-w-[1200px] px-5 md:px-8">
+      <div className="mx-auto w-full max-w-[1400px] px-5 md:px-8">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">

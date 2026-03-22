@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, MessageCircle, Search, User, Users, Sparkles, Compass, ShieldCheck, CalendarRange } from "lucide-react";
-import { useEffect } from "react";
+import { Flame, MessageCircle, Search, User, Users, Sparkles, Compass, ShieldCheck, CalendarRange, LogOut, Coins, Crown } from "lucide-react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
@@ -12,24 +12,44 @@ import { BottomNav } from "./BottomNav";
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { matches, currentUser, session, hydrateFromApi, refreshOnboardingStatus, accountState, onboardingStatus } = useStore();
+  const { matches, currentUser, session, hydrateFromApi, refreshOnboardingStatus, accountState, onboardingStatus, logout, refreshWallet, wallet } =
+    useStore();
+  const [isHydrated, setIsHydrated] = useState(useStore.persist.hasHydrated());
 
   useEffect(() => {
-    if (!session?.accessToken) return;
+    const unsubscribeHydrate = useStore.persist.onHydrate(() => setIsHydrated(false));
+    const unsubscribeFinishHydration = useStore.persist.onFinishHydration(() => setIsHydrated(true));
+    setIsHydrated(useStore.persist.hasHydrated());
+    return () => {
+      unsubscribeHydrate();
+      unsubscribeFinishHydration();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!session?.accessToken) {
+      router.replace("/login");
+    }
+  }, [isHydrated, session?.accessToken, router]);
+
+  useEffect(() => {
+    if (!isHydrated || !session?.accessToken) return;
     const run = async () => {
       await hydrateFromApi();
       await refreshOnboardingStatus();
+      await refreshWallet();
     };
     void run();
-  }, [session?.accessToken, hydrateFromApi, refreshOnboardingStatus]);
+  }, [isHydrated, session?.accessToken, hydrateFromApi, refreshOnboardingStatus, refreshWallet]);
 
   useEffect(() => {
-    if (!session?.accessToken) return;
+    if (!isHydrated || !session?.accessToken) return;
     const canUseApp = Boolean(accountState?.can_use_app || onboardingStatus?.verification?.status === "approved");
     if (!canUseApp) {
       router.replace("/setup");
     }
-  }, [session?.accessToken, accountState?.can_use_app, onboardingStatus?.verification?.status, router]);
+  }, [isHydrated, session?.accessToken, accountState?.can_use_app, onboardingStatus?.verification?.status, router]);
 
   const hideNavRoutes = ["/messages/"];
   const showNav = !hideNavRoutes.some((route) => pathname.includes(route) && pathname !== "/messages");
@@ -47,10 +67,19 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     if (path === "/home") return pathname === "/home";
     return pathname.startsWith(path);
   };
+  const hasActiveSubscription = wallet?.active_subscription?.status === "active";
+
+  if (!isHydrated || !session?.accessToken) {
+    return (
+      <div className="min-h-screen bg-[#080808] text-white flex items-center justify-center">
+        <div className="text-zinc-400">Loading...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#080808] text-white lg:grid lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:gap-6 lg:px-6 lg:py-6">
-      <aside className="hidden lg:flex lg:flex-col lg:rounded-3xl lg:border lg:border-white/10 lg:bg-[#0E0E0E] lg:p-5 lg:shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
+    <div className="min-h-screen bg-[#080808] text-white lg:grid lg:h-screen lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:gap-6 lg:overflow-hidden lg:px-6 lg:py-6">
+      <aside className="hidden lg:flex lg:h-full lg:flex-col lg:rounded-3xl lg:border lg:border-white/10 lg:bg-[#0E0E0E] lg:p-5 lg:shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
         <Link href="/home" className="mb-8 flex items-center gap-2 text-crimson">
           <Flame className="h-7 w-7 fill-crimson" />
           <span className="font-serif text-2xl font-bold tracking-wide text-white">IGNITE</span>
@@ -83,18 +112,77 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="mt-auto space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="text-xs font-mono uppercase tracking-[0.16em] text-zinc-500">Active Account</div>
-          <div className="text-lg font-semibold text-white">{currentUser?.name ?? "Ignite User"}</div>
-          <div className="text-sm text-zinc-400">
-            {typeof currentUser?.location === "string"
-              ? currentUser.location
-              : currentUser?.location?.city ?? "Loves meaningful connections"}
+        <div className="mt-auto space-y-3">
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="text-xs font-mono uppercase tracking-[0.16em] text-zinc-500">Active Account</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-lg font-semibold text-white">{currentUser?.name ?? "Ignite User"}</div>
+              {hasActiveSubscription ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-300">
+                  <Crown className="h-3 w-3" />
+                  Pro
+                </span>
+              ) : null}
+            </div>
+            <div className="text-sm text-zinc-400">
+              {typeof currentUser?.location === "string"
+                ? currentUser.location
+                : currentUser?.location?.city ?? "Loves meaningful connections"}
+            </div>
+            {!hasActiveSubscription ? (
+              <Link
+                href="/wallet/buy"
+                className="flex w-full items-center justify-center rounded-xl bg-crimson px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-600"
+              >
+                Buy Subscription
+              </Link>
+            ) : null}
           </div>
+          {hasActiveSubscription ? (
+            <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center gap-2 text-zinc-200">
+                <Coins className="h-4 w-4 text-amber-400" />
+                <span className="text-xs font-mono uppercase tracking-[0.14em] text-zinc-400">Coins</span>
+              </div>
+              <div className="text-2xl font-bold text-white">{wallet?.coins ?? 0}</div>
+              <div className="flex gap-2">
+                <Link
+                  href="/wallet/transactions"
+                  className="flex-1 rounded-xl border border-white/10 px-3 py-2 text-center text-xs font-medium text-zinc-200 transition-colors hover:bg-white/10"
+                >
+                  Transactions
+                </Link>
+                <Link
+                  href="/wallet/buy"
+                  className="flex-1 rounded-xl border border-crimson/30 px-3 py-2 text-center text-xs font-medium text-crimson transition-colors hover:bg-crimson/10"
+                >
+                  Buy
+                </Link>
+              </div>
+              {(wallet?.coins ?? 0) < 30 ? (
+                <Link
+                  href="/wallet/buy?type=addon"
+                  className="flex w-full items-center justify-center rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-black transition-colors hover:bg-amber-400"
+                >
+                  Buy Addon
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
+          <button
+            onClick={() => {
+              logout();
+              router.push("/login");
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-200 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </button>
         </div>
       </aside>
 
-      <div className="min-w-0 lg:rounded-3xl lg:border lg:border-white/10 lg:bg-[#0B0B0B] lg:shadow-[0_20px_80px_rgba(0,0,0,0.28)]">
+      <div className="min-w-0 lg:h-full lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-white/10 lg:bg-[#0B0B0B] lg:shadow-[0_20px_80px_rgba(0,0,0,0.28)]">
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
@@ -109,7 +197,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
       </div>
 
-      <aside className="hidden lg:flex lg:flex-col lg:gap-4 lg:rounded-3xl lg:border lg:border-white/10 lg:bg-[#0E0E0E] lg:p-5 lg:shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
+      <aside className="hidden lg:flex lg:h-full lg:flex-col lg:gap-4 lg:rounded-3xl lg:border lg:border-white/10 lg:bg-[#0E0E0E] lg:p-5 lg:shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
         <div className="rounded-2xl border border-crimson/20 bg-crimson/10 p-4">
           <div className="mb-2 flex items-center gap-2 text-crimson">
             <Sparkles className="h-4 w-4" />

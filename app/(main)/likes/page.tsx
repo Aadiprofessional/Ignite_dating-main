@@ -39,8 +39,8 @@ export default function LikesPage() {
           <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-crimson/20 border border-amber-500/30 text-center relative overflow-hidden">
             <div className="relative z-10">
               <h3 className="font-bold text-amber-500 mb-1">Upgrade to See Who Likes You</h3>
-              <p className="text-xs text-white/60 mb-3">Don't keep them waiting! See everyone who swiped right.</p>
-              <Link href="/premium">
+              <p className="text-xs text-white/60 mb-3">Do not keep them waiting! See everyone who swiped right.</p>
+              <Link href="/wallet/buy">
                 <button className="bg-gradient-to-r from-amber-500 to-crimson text-white font-bold text-xs px-6 py-2 rounded-full shadow-lg hover:scale-105 transition-transform">
                   Unlock Likes
                 </button>

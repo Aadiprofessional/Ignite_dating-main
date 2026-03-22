@@ -92,6 +92,46 @@ export interface EventJoinRequest {
   };
 }
 
+export interface WalletSubscription {
+  subscription_id: string;
+  plan_id: string;
+  plan_type: 'monthly' | 'yearly' | 'addon' | string;
+  status: string;
+  cycle_start: string;
+  cycle_end: string;
+  months_total: number;
+  months_consumed: number;
+}
+
+export interface WalletInfo {
+  user_id: string;
+  coins: number;
+  active_subscription: WalletSubscription | null;
+}
+
+export interface PlanOption {
+  id: string;
+  name: string;
+  plan_type: 'monthly' | 'yearly' | 'addon' | string;
+  price: string;
+  coin_amount: number;
+  months_total: number;
+  is_active: boolean;
+}
+
+export interface CoinTransaction {
+  id: string;
+  transaction_type: 'credit' | 'debit' | string;
+  transaction_name: string;
+  status: string;
+  coins: number;
+  amount: string;
+  currency: string;
+  related_transaction_id: string | null;
+  meta: Record<string, unknown>;
+  transaction_time: string;
+}
+
 interface ApiCallOptions {
   method?: HttpMethod;
   path: string;
@@ -665,6 +705,74 @@ export const api = {
     apiCall<{ join_request?: EventJoinRequest }>({
       method: 'PATCH',
       path: `/api/events/${eventId}/join-requests/${joinRequestId}`,
+      token,
+      body,
+    }),
+  listPublicRunningEvents: async () =>
+    apiCall<{ events?: EventRecord[]; running_events?: EventRecord[]; data?: EventRecord[] }>({
+      path: '/api/events/public/running',
+    }),
+  getCoins: async (token: string, uid: string) =>
+    apiCall<{ wallet?: WalletInfo }>({
+      path: `/api/getCoins?uid=${encodeURIComponent(uid)}`,
+      token,
+    }),
+  listPlans: async (token: string) =>
+    apiCall<{ plans?: PlanOption[] }>({
+      path: '/api/plans',
+      token,
+    }),
+  buySubscription: async (token: string, body: { plan_id: string; uid: string; transaction_name: string }) =>
+    apiCall<{ wallet?: WalletInfo }>({
+      method: 'POST',
+      path: '/api/buy-subscription',
+      token,
+      body,
+    }),
+  subtractCoins: async (
+    token: string,
+    body: { uid: string; coins: number; transaction_name: string; transaction_time?: string }
+  ) =>
+    apiCall<{
+      result?: {
+        ok?: boolean;
+        transaction_id?: string;
+        user_id?: string;
+        deducted_coins?: number;
+        wallet?: WalletInfo;
+      };
+    }>({
+      method: 'POST',
+      path: '/api/subtractCoins',
+      token,
+      body,
+    }),
+  listCoinTransactions: async (
+    token: string,
+    options: { uid: string; limit?: number; offset?: number }
+  ) => {
+    const params = new URLSearchParams({
+      uid: options.uid,
+      limit: String(options.limit ?? 50),
+      offset: String(options.offset ?? 0),
+    });
+    return apiCall<{ transactions?: CoinTransaction[] }>({
+      path: `/api/transactions?${params.toString()}`,
+      token,
+    });
+  },
+  refundCoins: async (token: string, body: { uid: string; transaction_id: string; transaction_name: string }) =>
+    apiCall<{
+      result?: {
+        ok?: boolean;
+        refunded_transaction_id?: string;
+        refund_transaction_id?: string;
+        coins_refunded?: number;
+        wallet?: WalletInfo;
+      };
+    }>({
+      method: 'POST',
+      path: '/api/refundCoins',
       token,
       body,
     }),

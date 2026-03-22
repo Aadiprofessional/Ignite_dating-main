@@ -131,7 +131,7 @@ export default function ProfilePage() {
 
         {/* Ignite Pro Banner */}
         {!isPro && (
-          <Link href="/premium">
+          <Link href="/wallet/buy">
             <motion.div 
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

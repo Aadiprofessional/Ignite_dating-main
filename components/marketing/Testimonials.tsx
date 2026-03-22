@@ -126,7 +126,7 @@ export default function Testimonials() {
       transition={{ duration: 0.7 }}
       className="overflow-hidden bg-[#0A0A0A] py-32"
     >
-      <div className="mx-auto w-full max-w-[1200px] px-5 md:px-8">
+      <div className="mx-auto w-full max-w-[1400px] px-5 md:px-8">
         <p className="text-center font-mono text-[11px] tracking-[0.35em] text-crimson">
           REAL STORIES
         </p>

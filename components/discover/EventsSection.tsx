@@ -8,9 +8,10 @@ Changes vs original:
 */
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import CustomMap from "@/components/CustomMap";
 import { api, EventJoinRequest, EventRecord } from "@/lib/api";
 import { useStore } from "@/lib/store";
-import { CalendarDays, Check, ChevronRight, Loader2, LocateFixed, MapPin, Plus, RefreshCw, Sparkles, Trash2, Users, Wifi } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, Loader2, LocateFixed, MapPin, Navigation, Plus, RefreshCw, Sparkles, Trash2, Users, Wifi } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type DiscoveryFilter = "all" | "today" | "this-week" | "online" | "in-person";
@@ -59,6 +60,18 @@ const toDisplayDateTime = (value?: string) => {
 
 const clampLatitude = (value: number) => Math.max(-90, Math.min(90, value));
 const clampLongitude = (value: number) => Math.max(-180, Math.min(180, value));
+const toRadians = (value: number) => (value * Math.PI) / 180;
+
+const getDistanceInKm = (fromLat: number, fromLng: number, toLat: number, toLng: number) => {
+  const earthRadiusKm = 6371;
+  const deltaLat = toRadians(toLat - fromLat);
+  const deltaLng = toRadians(toLng - fromLng);
+  const a =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(toRadians(fromLat)) * Math.cos(toRadians(toLat)) * Math.sin(deltaLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+};
 
 const getEventTimes = (event: EventRecord) => ({
   starts: event.starts_at ? new Date(event.starts_at).getTime() : Number.NaN,
@@ -101,20 +114,6 @@ const isOnlineEvent = (event: EventRecord) => {
 const hostNameFromEvent = (event: EventRecord) => `Host ${(event.creator_id || event.id).slice(0, 5).toUpperCase()}`;
 const hostAvatarFromEvent = (event: EventRecord) =>
   `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(event.creator_id || event.id)}`;
-
-const buildOpenStreetMapEmbedUrl = (event: EventRecord | null) => {
-  const latitude = Number(event?.latitude);
-  const longitude = Number(event?.longitude);
-  if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
-    const delta = 0.015;
-    const minLon = clampLongitude(longitude - delta);
-    const minLat = clampLatitude(latitude - delta);
-    const maxLon = clampLongitude(longitude + delta);
-    const maxLat = clampLatitude(latitude + delta);
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${minLon}%2C${minLat}%2C${maxLon}%2C${maxLat}&layer=mapnik&marker=${latitude}%2C${longitude}`;
-  }
-  return "https://www.openstreetmap.org/export/embed.html?bbox=68%2C6%2C98%2C37&layer=mapnik";
-};
 
 const getDefaultCreateFormState = (): CreateEventFormState => {
   const startsAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -185,6 +184,9 @@ export function EventsSection() {
   const [detailsJoinRequest, setDetailsJoinRequest] = useState<EventJoinRequest | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [viewerLocation, setViewerLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [viewerLocationLoading, setViewerLocationLoading] = useState(false);
+  const [viewerLocationError, setViewerLocationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadEvents = useCallback(async () => {
@@ -371,7 +373,6 @@ export function EventsSection() {
   );
 
   const selectedJoinEvent = useMemo(() => feedEvents.find((event) => event.id === selectedJoinEventId) || null, [feedEvents, selectedJoinEventId]);
-  const detailsMapEmbedUrl = useMemo(() => buildOpenStreetMapEmbedUrl(detailsEvent), [detailsEvent]);
 
   const handleUseCurrentLocation = useCallback(async () => {
     setLocationError(null);
@@ -524,10 +525,47 @@ export function EventsSection() {
     await loadEventJoinRequests(eventId);
   };
 
+  const requestViewerLocation = useCallback(async () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setViewerLocationError("Location access is not available in this browser.");
+      return;
+    }
+    setViewerLocationLoading(true);
+    setViewerLocationError(null);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10_000,
+          maximumAge: 60_000,
+        });
+      });
+      setViewerLocation({
+        lat: clampLatitude(position.coords.latitude),
+        lng: clampLongitude(position.coords.longitude),
+      });
+    } catch (error) {
+      if (error instanceof GeolocationPositionError) {
+        if (error.code === error.PERMISSION_DENIED) {
+          setViewerLocationError("Location permission denied. Enable it to view route and distance.");
+        } else if (error.code === error.TIMEOUT) {
+          setViewerLocationError("Location request timed out. Try again.");
+        } else {
+          setViewerLocationError("Unable to detect your current location.");
+        }
+      } else {
+        setViewerLocationError("Unable to detect your current location.");
+      }
+    } finally {
+      setViewerLocationLoading(false);
+    }
+  }, []);
+
   const openDetails = async (eventId: string) => {
     if (!token) return;
     setDetailsOpen(true);
     setDetailsLoading(true);
+    void requestViewerLocation();
     try {
       const response = await api.getEventDetails(token, eventId);
       setDetailsEvent(response.data.event || null);
@@ -536,6 +574,28 @@ export function EventsSection() {
       setDetailsLoading(false);
     }
   };
+
+  const detailsCoords = useMemo(() => {
+    const lat = Number(detailsEvent?.latitude);
+    const lng = Number(detailsEvent?.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  }, [detailsEvent?.latitude, detailsEvent?.longitude]);
+
+  const detailsDistanceKm = useMemo(() => {
+    if (!viewerLocation || !detailsCoords) return null;
+    return getDistanceInKm(viewerLocation.lat, viewerLocation.lng, detailsCoords.lat, detailsCoords.lng);
+  }, [viewerLocation, detailsCoords]);
+
+  const directionsUrl = useMemo(() => {
+    if (!viewerLocation || !detailsCoords) return "";
+    return `https://www.google.com/maps/dir/?api=1&origin=${viewerLocation.lat},${viewerLocation.lng}&destination=${detailsCoords.lat},${detailsCoords.lng}&travelmode=driving`;
+  }, [viewerLocation, detailsCoords]);
+
+  const detailsJoinStatus = useMemo(() => {
+    if (!detailsEvent?.id) return "";
+    return (detailsJoinRequest?.status || myJoinStatusByEvent[detailsEvent.id] || "").toLowerCase();
+  }, [detailsEvent?.id, detailsJoinRequest?.status, myJoinStatusByEvent]);
 
   const handleReviewJoinRequest = async (joinRequestId: string, action: "approve" | "reject") => {
     if (!token || !selectedEventToManageId) return;
@@ -646,7 +706,7 @@ export function EventsSection() {
               const myJoinStatus = myJoinStatusByEvent[event.id];
               const isMine = myCreatedEventIds.has(event.id);
               const hasSlots = (event.available_slots ?? 1) > 0;
-              const isJoinDisabled = isMine || myJoinStatus === "pending" || myJoinStatus === "approved" || !hasSlots;
+              const hasJoinStatus = Boolean(myJoinStatus);
               const chipClass = live
                 ? "border-rose-400/70 bg-rose-500/20 text-rose-200"
                 : isOnlineEvent(event)
@@ -741,22 +801,22 @@ export function EventsSection() {
 
                     {!isMine ? (
                       <div className="space-y-2" onClick={(clickEvent) => clickEvent.stopPropagation()}>
-                        <button
-                          type="button"
-                          aria-label={`Join ${event.title || "event"}`}
-                          disabled={isJoinDisabled || joinActionEventId === event.id}
-                          onClick={() => openJoinDialog(event)}
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-crimson/50 bg-crimson/85 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-crimson disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {joinActionEventId === event.id ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                          {myJoinStatus === "pending"
-                            ? "Join request pending"
-                            : myJoinStatus === "approved"
-                              ? "Already approved"
-                              : hasSlots
-                                ? "Join"
-                                : "Event Full"}
-                        </button>
+                        {hasJoinStatus ? (
+                          <p className="inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold capitalize text-zinc-200">
+                            Join status: {myJoinStatus?.replaceAll("_", " ")}
+                          </p>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label={`Join ${event.title || "event"}`}
+                            disabled={!hasSlots || joinActionEventId === event.id}
+                            onClick={() => openJoinDialog(event)}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-crimson/50 bg-crimson/85 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-crimson disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {joinActionEventId === event.id ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                            {hasSlots ? "Join" : "Event Full"}
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <button
@@ -1341,7 +1401,7 @@ export function EventsSection() {
       </Dialog>
 
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="h-[86vh] max-h-[86vh] w-[min(96vw,1200px)] overflow-hidden border-white/15 bg-[#0C0C0C] p-0 text-white sm:max-w-[1200px]">
+        <DialogContent className="h-[86vh] max-h-[86vh] w-[min(96vw,1200px)] overflow-hidden border-white/15 bg-[#0C0C0C] p-0 text-white sm:max-w-[1200px] [&>button]:z-50 [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/20 [&>button]:bg-black/70 [&>button]:p-1.5 [&>button]:text-white">
           {detailsLoading ? (
             <div className="flex h-full items-center justify-center gap-2 text-sm text-zinc-400">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -1356,7 +1416,7 @@ export function EventsSection() {
                 </DialogHeader>
                 <div className="mt-4 space-y-4">
                   <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#141414]">
-                    <div className="relative h-44">
+                    <div className="relative h-52">
                       {detailsEvent?.image_url ? (
                         <img src={detailsEvent.image_url} loading="lazy" alt={detailsEvent.title || "Event"} className="h-full w-full object-cover" />
                       ) : (
@@ -1372,46 +1432,145 @@ export function EventsSection() {
                         </span>
                       </div>
                     </div>
-                    <div className="space-y-2 p-4">
-                      <p>{detailsEvent?.description || "No description available."}</p>
-                      <p className="inline-flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4 text-crimson" />
-                        {toDisplayDateTime(detailsEvent?.starts_at)} - {toDisplayDateTime(detailsEvent?.ends_at)}
-                      </p>
-                      <p className="inline-flex items-start gap-2">
-                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-crimson" />
-                        {[detailsEvent?.location_name, detailsEvent?.address, detailsEvent?.city, detailsEvent?.country].filter(Boolean).join(", ") || "Location TBD"}
-                      </p>
-                      <p className="inline-flex items-center gap-2">
-                        <Users className="h-4 w-4 text-crimson" />
-                        {(detailsEvent?.approved_participants ?? 0)} joined · {detailsEvent?.available_slots ?? "—"} slots left
-                      </p>
+                    <div className="space-y-3 p-4">
+                      <p className="leading-relaxed">{detailsEvent?.description || "No description available."}</p>
+                      <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                        <p className="inline-flex items-center gap-2 text-zinc-200">
+                          <CalendarDays className="h-4 w-4 text-crimson" />
+                          {toDisplayDateTime(detailsEvent?.starts_at)} - {toDisplayDateTime(detailsEvent?.ends_at)}
+                        </p>
+                        <p className="mt-2 inline-flex items-start gap-2 text-zinc-200">
+                          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-crimson" />
+                          {[detailsEvent?.location_name, detailsEvent?.address, detailsEvent?.city, detailsEvent?.country].filter(Boolean).join(", ") || "Location TBD"}
+                        </p>
+                        <p className="mt-2 inline-flex items-center gap-2 text-zinc-200">
+                          <Users className="h-4 w-4 text-crimson" />
+                          {(detailsEvent?.approved_participants ?? 0)} joined · {detailsEvent?.available_slots ?? "—"} slots left
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-[#101010] p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                            <Navigation className="h-4 w-4 text-crimson" />
+                            Your route info
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => void requestViewerLocation()}
+                            className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-white/10"
+                          >
+                            <LocateFixed className="h-3 w-3" />
+                            Refresh location
+                          </button>
+                        </div>
+                        {viewerLocationLoading ? (
+                          <p className="mt-2 inline-flex items-center gap-2 text-xs text-zinc-300">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Detecting your current location...
+                          </p>
+                        ) : null}
+                        {viewerLocationError ? <p className="mt-2 text-xs text-rose-300">{viewerLocationError}</p> : null}
+                        {viewerLocation ? (
+                          <div className="mt-2 space-y-2 text-xs text-zinc-300">
+                            <p>
+                              You: {viewerLocation.lat.toFixed(5)}, {viewerLocation.lng.toFixed(5)}
+                            </p>
+                            <p>
+                              Distance: {detailsDistanceKm !== null ? `${detailsDistanceKm.toFixed(1)} km` : "Not available"}
+                            </p>
+                            {directionsUrl ? (
+                              <a
+                                href={directionsUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 rounded-lg border border-crimson/35 bg-crimson/15 px-2 py-1 font-medium text-crimson transition-colors hover:bg-crimson/25"
+                              >
+                                Open turn-by-turn path
+                                <ChevronRight className="h-3.5 w-3.5" />
+                              </a>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                      My Join Status: {(detailsJoinRequest?.status || "none").replaceAll("_", " ")}
+                      My Join Status: {(detailsJoinStatus || "none").replaceAll("_", " ")}
                     </span>
                     <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">Event ID: {detailsEvent?.id || "—"}</span>
                   </div>
+                  {!myCreatedEventIds.has(detailsEvent?.id || "") ? (
+                    <div className="rounded-2xl border border-white/10 bg-[#111111] p-3">
+                      {detailsJoinStatus ? (
+                        <p className="inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold capitalize text-zinc-200">
+                          Join status: {detailsJoinStatus.replaceAll("_", " ")}
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          aria-label={`Join ${detailsEvent?.title || "event"} from details`}
+                          disabled={(detailsEvent?.available_slots ?? 1) <= 0 || !detailsEvent}
+                          onClick={() => {
+                            if (detailsEvent) openJoinDialog(detailsEvent);
+                          }}
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-crimson/50 bg-crimson/85 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-crimson disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {(detailsEvent?.available_slots ?? 1) > 0 ? "Join Event" : "Event Full"}
+                        </button>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               </div>
               <div className="relative h-full overflow-hidden border-t border-white/10 bg-[#0F0F0F] lg:border-l lg:border-t-0">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(232,25,44,0.22),transparent_38%),radial-gradient(circle_at_80%_80%,rgba(232,25,44,0.12),transparent_42%)]" />
-                <div className="absolute left-4 right-4 top-4 z-10 rounded-2xl border border-white/15 bg-black/35 p-3 backdrop-blur-md">
+                <div className="absolute left-4 right-16 top-4 z-20 rounded-2xl border border-white/15 bg-black/35 p-3 backdrop-blur-md lg:right-4">
                   <p className="text-sm font-semibold text-white">Event Location Map</p>
                   <p className="mt-1 text-xs text-zinc-300">
                     {[detailsEvent?.location_name, detailsEvent?.city, detailsEvent?.country].filter(Boolean).join(", ") || "Location not available"}
                   </p>
                 </div>
                 <div className="absolute inset-0 overflow-hidden">
-                  <iframe
-                    title="Event location map"
-                    src={detailsMapEmbedUrl}
-                    className="h-full w-full"
-                    style={{ filter: "saturate(1.35) hue-rotate(-26deg) brightness(0.72) contrast(1.2)" }}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
+                  <CustomMap
+                    latitude={detailsCoords?.lat ?? null}
+                    longitude={detailsCoords?.lng ?? null}
+                    zoom={13}
+                    interactive
+                    height="100%"
+                    markers={[
+                      ...(viewerLocation
+                        ? [
+                            {
+                              lat: viewerLocation.lat,
+                              lng: viewerLocation.lng,
+                              label: "Your current location",
+                              color: "var(--foreground)",
+                              markerType: "user" as const,
+                            },
+                          ]
+                        : []),
+                      ...(detailsCoords
+                        ? [
+                            {
+                              lat: detailsCoords.lat,
+                              lng: detailsCoords.lng,
+                              label: detailsEvent?.title || "Event location",
+                              color: "var(--crimson)",
+                              live: detailsEvent ? isLiveEvent(detailsEvent, nowTick) : false,
+                              markerType: "event" as const,
+                            },
+                          ]
+                        : []),
+                    ]}
+                    routeCoordinates={
+                      viewerLocation && detailsCoords
+                        ? {
+                            from: { lat: viewerLocation.lat, lng: viewerLocation.lng },
+                            to: { lat: detailsCoords.lat, lng: detailsCoords.lng },
+                          }
+                        : null
+                    }
                   />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/30" />
                   <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />

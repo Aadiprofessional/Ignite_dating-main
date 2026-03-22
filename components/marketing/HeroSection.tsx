@@ -3,8 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
-import { ArrowRight } from "lucide-react";
-import SplineHero from "@/components/marketing/SplineHero";
+import { ArrowRight, Check, ShieldCheck, Sparkles, Users } from "lucide-react";
 
 const container: Variants = {
   hidden: { opacity: 0 },
@@ -26,7 +25,6 @@ const item: Variants = {
   },
 };
 
-const headlineWords = ["Find", "Someone"];
 const avatars = [
   "https://randomuser.me/api/portraits/women/68.jpg",
   "https://randomuser.me/api/portraits/men/41.jpg",
@@ -34,142 +32,194 @@ const avatars = [
   "https://randomuser.me/api/portraits/men/12.jpg",
   "https://randomuser.me/api/portraits/women/9.jpg",
 ];
+const trustStats = [
+  { label: "Live Matches Daily", value: "150K+" },
+  { label: "Verified Profiles", value: "98%" },
+  { label: "Meaningful Chats", value: "2.8M+" },
+];
+const valuePoints = [
+  "Personalized compatibility suggestions",
+  "Verified profiles and safety-first design",
+  "Events and sparks tailored to your city",
+];
 
 export default function HeroSection() {
   const { scrollY } = useScroll();
   const scrollHintOpacity = useTransform(scrollY, [0, 100], [1, 0]);
 
   return (
-    <section className="relative min-h-[100dvh] overflow-hidden bg-background">
-      <SplineHero />
-
-      <div className="pointer-events-none absolute inset-0 z-10">
-        <div className="absolute -left-32 top-[22%] h-[420px] w-[420px] rounded-full bg-crimson/24 blur-[140px] animate-float" />
-        <div className="absolute -right-40 top-[8%] h-[460px] w-[460px] rounded-full bg-crimson-dark/30 blur-[160px] animate-floatReverse" />
-      </div>
-
-      <div className="relative z-20 mx-auto flex min-h-[100dvh] w-full max-w-[1200px] px-5 pb-14 pt-24 md:px-8">
+    <section className="relative min-h-[calc(100dvh-5rem)] overflow-hidden bg-[#080808]">
+      <div className="relative z-20 mx-auto flex min-h-[calc(100dvh-5rem)] w-full max-w-[1400px] items-center px-5 pb-8 pt-14 md:px-8 lg:pt-10">
         <motion.div
           variants={container}
           initial="hidden"
           animate="show"
-          className="mx-auto w-full max-w-[620px] text-center md:mx-0 md:text-left"
+          className="grid w-full items-center gap-10 lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-14"
         >
-          <motion.p
-            variants={item}
-            className="font-mono text-[11px] tracking-[0.35em] text-crimson"
-          >
-            ✦ THE DATING APP FOR THIS GENERATION ✦
-          </motion.p>
+          <div className="text-center lg:text-left">
+            <motion.p
+              variants={item}
+              className="inline-flex items-center rounded-full border border-crimson/40 bg-crimson/10 px-4 py-2 font-mono text-[11px] tracking-[0.25em] text-crimson"
+            >
+              <Sparkles className="mr-2 h-3.5 w-3.5" />
+              MADE FOR REAL CONNECTIONS
+            </motion.p>
 
-          <div className="mt-6 space-y-2">
-            <h1 className="font-display text-[52px] font-bold leading-[0.9] text-offwhite md:text-[88px]">
-              {headlineWords.map((word, index) => (
+            <div className="mt-6 space-y-3">
+              <h1 className="font-display text-[44px] font-bold leading-[0.92] text-offwhite sm:text-[56px] md:text-[68px] lg:text-[78px]">
                 <motion.span
-                  key={word}
                   initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 + index * 0.08, duration: 0.5 }}
-                  className="mr-5 inline-block"
+                  transition={{ delay: 0.24, duration: 0.55 }}
+                  className="inline-block"
                 >
-                  {word}
+                  Meet people
                 </motion.span>
-              ))}
-            </h1>
+                <br />
+                <motion.span
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.34, duration: 0.55 }}
+                  className="inline-block bg-gradient-to-r from-crimson to-[#ff7a8a] bg-clip-text text-transparent"
+                >
+                  worth your energy
+                </motion.span>
+              </h1>
 
-            <h2 className="font-display text-[52px] font-bold italic leading-[0.9] text-crimson md:text-[88px]">
-              <motion.span
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.36, duration: 0.5 }}
-                className="inline-block"
+              <motion.p
+                variants={item}
+                transition={{ delay: 0.46, duration: 0.6 }}
+                className="mx-auto max-w-[600px] font-body text-base leading-relaxed text-offwhite/75 sm:text-lg lg:mx-0 lg:text-[19px]"
               >
-                Worth Burning
-              </motion.span>
-              <svg
-                viewBox="0 0 410 36"
-                className="mt-2 h-4 w-[250px] md:h-6 md:w-[390px]"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <motion.path
-                  d="M4 24C40 8 120 6 180 15C230 23 290 35 406 6"
-                  stroke="#E8192C"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  initial={{ pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: 1, opacity: 1 }}
-                  transition={{ delay: 0.5, duration: 0.8, ease: [0.37, 0, 0.63, 1] }}
-                />
-              </svg>
-            </h2>
+                Ignite helps you move from endless scrolling to intentional
+                dating with profile quality checks, smarter compatibility, and
+                safer first conversations.
+              </motion.p>
+            </div>
 
-            <h3 className="font-display text-[52px] font-bold leading-[0.9] text-offwhite md:text-[88px]">
-              <motion.span
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.44, duration: 0.5 }}
-                className="inline-block"
+            <motion.div
+              variants={item}
+              transition={{ delay: 0.6, duration: 0.55 }}
+              className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:justify-center lg:justify-start"
+            >
+              <Link
+                href="/signup"
+                className="ignite-btn group inline-flex items-center justify-center rounded-full bg-crimson px-7 py-3.5 font-body text-sm font-semibold text-offwhite shadow-[0_0_32px_rgba(232,25,44,0.28)] transition hover:bg-crimson-dark hover:shadow-[0_0_42px_rgba(232,25,44,0.5)] sm:px-10 sm:py-4"
               >
-                For. 🔥
-              </motion.span>
-            </h3>
+                Start Free
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+              </Link>
+              <a
+                href="#how-it-works"
+                className="ignite-btn inline-flex items-center justify-center rounded-full border border-white/20 px-7 py-3.5 font-body text-sm font-medium text-offwhite/90 transition hover:border-white/35 hover:bg-white/5 sm:px-10 sm:py-4"
+              >
+                Explore How It Works
+              </a>
+            </motion.div>
+
+            <motion.div
+              variants={item}
+              transition={{ delay: 0.72, duration: 0.55 }}
+              className="mt-7 flex flex-col items-center gap-4 lg:items-start"
+            >
+              <div className="flex items-center">
+                {avatars.map((avatar, index) => (
+                  <span
+                    key={avatar}
+                    className={`relative inline-flex h-10 w-10 overflow-hidden rounded-full border border-white/25 sm:h-11 sm:w-11 ${index === 0 ? "" : "-ml-3"}`}
+                  >
+                    <Image src={avatar} alt="IGNITE member" fill sizes="44px" />
+                  </span>
+                ))}
+                <span className="ml-3 rounded-full border border-white/15 bg-white/5 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-offwhite/80">
+                  2,847,291+ active singles
+                </span>
+              </div>
+
+              <div className="grid w-full max-w-[640px] grid-cols-1 gap-2.5 sm:grid-cols-3">
+                {trustStats.map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left"
+                  >
+                    <p className="font-display text-[22px] leading-none text-offwhite">
+                      {stat.value}
+                    </p>
+                    <p className="mt-1 text-xs text-offwhite/60">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
           </div>
 
-          <motion.p
-            variants={item}
-            transition={{ delay: 0.5, duration: 0.6 }}
-            className="mx-auto mt-8 max-w-[460px] font-body text-lg leading-relaxed text-offwhite/60 md:mx-0 md:text-[20px]"
-          >
-            Stop swiping endlessly. Start igniting real chemistry with people
-            who match your energy, not just your filters.
-          </motion.p>
-
           <motion.div
             variants={item}
-            transition={{ delay: 0.7, duration: 0.6 }}
-            className="mt-9 flex flex-wrap items-center justify-center gap-5 md:justify-start"
+            transition={{ delay: 0.34, duration: 0.7 }}
+            className="mx-auto w-full max-w-[420px] lg:mx-0"
           >
-            <Link
-              href="/signup"
-              className="ignite-btn group inline-flex items-center rounded-full bg-crimson px-10 py-4 font-body text-sm font-semibold text-offwhite shadow-[0_0_35px_rgba(232,25,44,0.25)] transition hover:bg-crimson-dark hover:shadow-[0_0_40px_rgba(232,25,44,0.5)]"
-            >
-              Create Your Free Profile
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-            </Link>
-            <a
-              href="#how-it-works"
-              className="ignite-btn font-body text-sm text-offwhite/80 transition hover:text-offwhite"
-            >
-              See How It Works ↓
-            </a>
-          </motion.div>
+            <div className="relative overflow-hidden rounded-[28px] border border-white/15 bg-gradient-to-b from-white/10 to-white/[0.02] p-4 backdrop-blur-xl sm:p-5">
+              <div className="absolute -top-10 right-6 h-24 w-24 rounded-full bg-crimson/30 blur-2xl" />
+              <div className="absolute -bottom-10 -left-5 h-24 w-24 rounded-full bg-crimson-dark/30 blur-2xl" />
 
-          <motion.div
-            variants={item}
-            transition={{ delay: 0.9, duration: 0.6 }}
-            className="mt-10 flex flex-col items-center gap-3 md:items-start"
-          >
-            <div className="flex items-center">
-              {avatars.map((avatar, index) => (
-                <span
-                  key={avatar}
-                  className={`relative inline-flex h-10 w-10 overflow-hidden rounded-full border border-white/20 ${index === 0 ? "" : "-ml-3"}`}
-                >
-                  <Image src={avatar} alt="IGNITE member" fill sizes="40px" />
-                </span>
-              ))}
+              <div className="relative rounded-3xl border border-white/10 bg-[#0f0f10]/95 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="rounded-full bg-crimson/20 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-crimson">
+                    Today&apos;s Best Match
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-offwhite/70">
+                    <Users className="h-3.5 w-3.5" />
+                    12 online now
+                  </span>
+                </div>
+
+                <div className="relative mt-4 h-[280px] overflow-hidden rounded-2xl sm:h-[300px]">
+                  <Image
+                    src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80"
+                    alt="Match preview"
+                    fill
+                    sizes="(max-width: 1024px) 90vw, 380px"
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent p-4">
+                    <p className="font-display text-2xl leading-none text-offwhite">
+                      Maya, 27
+                    </p>
+                    <p className="mt-1 text-sm text-offwhite/75">
+                      Coffee walks, live gigs, and spontaneous road trips
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2.5">
+                  {valuePoints.map((point) => (
+                    <div
+                      key={point}
+                      className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+                    >
+                      <Check className="h-4 w-4 text-crimson" />
+                      <span className="text-sm text-offwhite/85">{point}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                  <span className="flex items-center gap-2 text-xs font-medium text-offwhite/80">
+                    <ShieldCheck className="h-4 w-4 text-crimson" />
+                    Safety-first conversations
+                  </span>
+                  <span className="font-mono text-[11px] uppercase tracking-[0.15em] text-crimson">
+                    Trusted
+                  </span>
+                </div>
+              </div>
             </div>
-            <p className="font-mono text-xs text-offwhite/65">
-              Join 2,847,291 singles already on IGNITE
-            </p>
           </motion.div>
         </motion.div>
       </div>
 
       <motion.div
         style={{ opacity: scrollHintOpacity }}
-        className="pointer-events-none absolute bottom-8 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 text-offwhite/65"
+        className="pointer-events-none absolute bottom-6 left-1/2 z-30 hidden -translate-x-1/2 items-center gap-2 text-offwhite/65 md:flex"
       >
         <svg
           width="20"
@@ -191,13 +241,6 @@ export default function HeroSection() {
           />
         </svg>
         <span className="font-mono text-[11px] uppercase tracking-[0.3em]">scroll</span>
-        <motion.span
-          className="text-lg"
-          animate={{ y: [0, 6, 0] }}
-          transition={{ duration: 1.3, repeat: Infinity }}
-        >
-          ↓
-        </motion.span>
       </motion.div>
     </section>
   );

@@ -47,7 +47,7 @@ function CountUp({ value, suffix }: { value: number; suffix: string }) {
       : display.toFixed(1).replace(/\.0$/, "");
 
   return (
-    <span ref={ref} className="font-display text-[44px] leading-none text-offwhite md:text-[56px]">
+    <span ref={ref} className="font-display text-[28px] leading-none text-offwhite sm:text-[32px]">
       {formatted}
       {suffix}
     </span>
@@ -63,16 +63,16 @@ export default function StatsBar() {
       initial={{ opacity: 0, y: 34 }}
       animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 34 }}
       transition={{ duration: 0.7 }}
-      className="border-y border-white/6 bg-white/[0.03] py-16"
+      className="border-y border-white/6 bg-white/[0.03] py-6"
     >
-      <div className="mx-auto grid w-full max-w-[1200px] gap-10 px-5 text-center md:grid-cols-3 md:gap-0 md:px-8">
+      <div className="mx-auto grid w-full max-w-[1400px] gap-4 px-5 text-center md:grid-cols-3 md:gap-0 md:px-8">
         {stats.map((stat, index) => (
           <div
             key={stat.label}
-            className={index < stats.length - 1 ? "md:border-r md:border-white/10" : ""}
+            className={`rounded-xl py-2 ${index < stats.length - 1 ? "md:border-r md:border-white/10" : ""}`}
           >
             <CountUp value={stat.value} suffix={stat.suffix} />
-            <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.28em] text-crimson">
+            <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-crimson/90">
               {stat.label}
             </p>
           </div>

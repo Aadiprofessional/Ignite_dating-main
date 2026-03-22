@@ -7,6 +7,7 @@ import {
   api,
   ApiError,
   AuthSession,
+  WalletInfo,
   mapApiDiscoverProfile,
   mapApiMatch,
   mapApiNotification,
@@ -60,6 +61,7 @@ interface AppState {
   accountState: AccountState | null;
   onboardingStatus: OnboardingStatusPayload | null;
   universities: UniversityOption[];
+  wallet: WalletInfo | null;
   
   // Actions
   signup: (payload: SignupPayload) => Promise<void>;
@@ -80,6 +82,7 @@ interface AppState {
   addBoosts: (amount: number) => void;
   consumeBoost: () => void;
   refreshOnboardingStatus: () => Promise<OnboardingStatusPayload | null>;
+  refreshWallet: () => Promise<WalletInfo | null>;
   searchUniversities: (search: string) => Promise<UniversityOption[]>;
   uploadVerificationDocument: (file: File) => Promise<string>;
   uploadProfilePhoto: (file: File) => Promise<string>;
@@ -210,6 +213,7 @@ export const useStore = create<AppState>()(
       accountState: null,
       onboardingStatus: null,
       universities: [],
+      wallet: null,
 
       signup: async (payload) => {
         await api.signup(payload);
@@ -257,6 +261,7 @@ export const useStore = create<AppState>()(
         }
         await Promise.allSettled([get().refreshDiscover({ limit: 20 }), get().refreshMatches(), get().refreshNotifications(30)]);
         await get().refreshOnboardingStatus().catch(() => null);
+        await get().refreshWallet().catch(() => null);
       },
 
       logout: () =>
@@ -269,6 +274,8 @@ export const useStore = create<AppState>()(
           accountState: null,
           onboardingStatus: null,
           universities: [],
+          wallet: null,
+          isPro: false,
         }),
 
       hydrateFromApi: async () => {
@@ -288,6 +295,7 @@ export const useStore = create<AppState>()(
           }));
           await Promise.all([get().refreshDiscover({ limit: 20 }), get().refreshMatches(), get().refreshNotifications(30)]);
           await get().refreshOnboardingStatus();
+          await get().refreshWallet();
         } catch (error) {
           if (error instanceof ApiError && error.status === 401) {
             get().logout();
@@ -475,6 +483,19 @@ export const useStore = create<AppState>()(
         }));
         return data;
       },
+      refreshWallet: async () => {
+        const token = get().session?.accessToken;
+        const uid = get().currentUser?.id;
+        if (!token || !uid) {
+          set({ wallet: null, isPro: false });
+          return null;
+        }
+        const response = await api.getCoins(token, uid);
+        const wallet = response.data?.wallet || null;
+        const isActive = wallet?.active_subscription?.status === 'active';
+        set({ wallet, isPro: Boolean(isActive) });
+        return wallet;
+      },
       searchUniversities: async (search) => {
         const token = get().session?.accessToken;
         if (!token) return [];
@@ -548,6 +569,7 @@ export const useStore = create<AppState>()(
         isPro: state.isPro,
         notifications: state.notifications,
         accountState: state.accountState,
+        wallet: state.wallet,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;

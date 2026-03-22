@@ -56,7 +56,7 @@ export default function MarketingNav() {
             : "border-transparent bg-transparent",
         )}
       >
-        <div className="mx-auto flex h-20 w-full max-w-[1200px] items-center justify-between px-5 md:px-8">
+        <div className="mx-auto flex h-20 w-full max-w-[1400px] items-center justify-between px-5 md:px-8">
           <Link href="/" className="flex items-center gap-2">
             <FlameMark />
             <span className="font-display text-3xl font-semibold tracking-[0.14em] text-offwhite">
