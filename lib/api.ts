@@ -16,6 +16,9 @@ export interface AccountState {
   onboarding_step: number;
   verification_status: string;
   can_use_app: boolean;
+  access_status: 'pending_submission' | 'pending_admin_approval' | 'rejected' | 'approved';
+  next_action: 'complete_onboarding_and_submit_verification' | 'wait_for_admin_approval' | 'resubmit_verification' | 'none';
+  status_message: string;
 }
 
 export interface VerificationRequest {
@@ -26,6 +29,11 @@ export interface VerificationRequest {
   custom_university_name?: string;
   document_url?: string;
   phone_number?: string;
+  passing_year?: number;
+  nick_name?: string;
+  instagram_link?: string;
+  wechat_link?: string;
+  xiaohongshu_link?: string;
 }
 
 export interface OnboardingStatusPayload {
@@ -38,6 +46,9 @@ export interface OnboardingStatusPayload {
     rejection_reason?: string | null;
     latest_request?: VerificationRequest | null;
   };
+  access_status?: AccountState['access_status'];
+  next_action?: AccountState['next_action'];
+  status_message?: string;
   preferences?: Record<string, unknown>;
 }
 
@@ -209,6 +220,60 @@ const pickString = (value: unknown, fallback = '') => (typeof value === 'string'
 const pickNumber = (value: unknown, fallback = 0) => (typeof value === 'number' ? value : fallback);
 const pickArray = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
 
+const resolveAccessStatus = (state: {
+  access_status?: unknown;
+  verification_status?: unknown;
+  onboarding_completed?: unknown;
+  can_use_app?: unknown;
+}): AccountState['access_status'] => {
+  const accessStatus = pickString(state.access_status);
+  if (
+    accessStatus === 'pending_submission' ||
+    accessStatus === 'pending_admin_approval' ||
+    accessStatus === 'rejected' ||
+    accessStatus === 'approved'
+  ) {
+    return accessStatus;
+  }
+  const verificationStatus = pickString(state.verification_status);
+  if (verificationStatus === 'approved' || state.can_use_app === true) return 'approved';
+  if (verificationStatus === 'rejected') return 'rejected';
+  if (verificationStatus === 'pending_admin_approval' || verificationStatus === 'pending') return 'pending_admin_approval';
+  if (verificationStatus === 'pending_submission') return 'pending_submission';
+  return state.onboarding_completed === true ? 'pending_admin_approval' : 'pending_submission';
+};
+
+const resolveNextAction = (accessStatus: AccountState['access_status']): AccountState['next_action'] => {
+  if (accessStatus === 'approved') return 'none';
+  if (accessStatus === 'pending_admin_approval') return 'wait_for_admin_approval';
+  if (accessStatus === 'rejected') return 'resubmit_verification';
+  return 'complete_onboarding_and_submit_verification';
+};
+
+const resolveStatusMessage = (state: { status_message?: unknown }, accessStatus: AccountState['access_status']) => {
+  const serverMessage = pickString(state.status_message).trim();
+  if (serverMessage) return serverMessage;
+  if (accessStatus === 'approved') return 'Your account is approved.';
+  if (accessStatus === 'pending_admin_approval') return 'Your verification is submitted and waiting for admin approval.';
+  if (accessStatus === 'rejected') return 'Your verification was rejected. Please resubmit your details.';
+  return 'Complete onboarding and submit your verification to continue.';
+};
+
+export const normalizeAccountState = (value: unknown): AccountState | null => {
+  if (!value || typeof value !== 'object') return null;
+  const state = value as Record<string, unknown>;
+  const accessStatus = resolveAccessStatus(state);
+  return {
+    onboarding_completed: Boolean(state.onboarding_completed),
+    onboarding_step: typeof state.onboarding_step === 'number' ? state.onboarding_step : 0,
+    verification_status: pickString(state.verification_status, accessStatus),
+    can_use_app: Boolean(state.can_use_app || accessStatus === 'approved'),
+    access_status: accessStatus,
+    next_action: resolveNextAction(accessStatus),
+    status_message: resolveStatusMessage(state, accessStatus),
+  };
+};
+
 const getSupabaseConfig = (bucketEnvKey: string, fallbackBucket: string) => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -304,6 +369,7 @@ export const mapApiUserToProfile = (
   const latitude = pickNumber(profilePayload.latitude);
   const longitude = pickNumber(profilePayload.longitude);
   const relationshipGoals = pickArray<string>(profilePayload.relationship_goals);
+  const meAccountState = normalizeAccountState(mePayload?.account_state);
   const resolvedUserId =
     pickString((userPayload as { id?: string }).id) ||
     pickString((profilePayload as { user_id?: string }).user_id) ||
@@ -323,7 +389,7 @@ export const mapApiUserToProfile = (
       '170 cm',
     relationshipGoal: relationshipGoals[0] || pickString(profilePayload.relationship_goal) || 'Long-term partner',
     interests,
-    isVerified: pickString((mePayload?.account_state as { verification_status?: string })?.verification_status) === 'approved',
+    isVerified: meAccountState?.access_status === 'approved' || meAccountState?.verification_status === 'approved',
     location: {
       lat: latitude,
       lng: longitude,
@@ -455,7 +521,7 @@ export const api = {
       (payload.user as Record<string, unknown> | undefined) ||
       (sessionPayload?.user as Record<string, unknown> | undefined) ||
       {};
-    const accountStatePayload = (payload.account_state as AccountState | undefined) || null;
+    const accountStatePayload = normalizeAccountState(payload.account_state);
     if (!token) {
       throw new ApiError(500, null, 'No access token received');
     }
@@ -595,8 +661,26 @@ export const api = {
   submitVerification: async (
     token: string,
     body:
-      | { university_id: string; document_url: string; phone_number: string }
-      | { custom_university_name: string; document_url: string; phone_number: string }
+      | {
+          university_id: string;
+          document_url: string;
+          phone_number: string;
+          passing_year: number;
+          nick_name?: string;
+          instagram_link?: string;
+          wechat_link?: string;
+          xiaohongshu_link?: string;
+        }
+      | {
+          custom_university_name: string;
+          document_url: string;
+          phone_number: string;
+          passing_year: number;
+          nick_name?: string;
+          instagram_link?: string;
+          wechat_link?: string;
+          xiaohongshu_link?: string;
+        }
   ) =>
     apiCall<{ verification_request?: VerificationRequest }>({
       method: 'POST',

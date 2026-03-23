@@ -30,19 +30,44 @@ export default function ReviewPendingPage() {
     };
   }, [session?.accessToken, hydrateFromApi, refreshOnboardingStatus, router]);
 
-  const verificationStatus =
-    onboardingStatus?.verification?.status || accountState?.verification_status || 'pending_submission';
-  const canUseApp = Boolean(accountState?.can_use_app || verificationStatus === 'approved');
+  const accessStatus =
+    accountState?.access_status ||
+    (accountState?.can_use_app || onboardingStatus?.verification?.status === 'approved'
+      ? 'approved'
+      : onboardingStatus?.verification?.status === 'rejected'
+        ? 'rejected'
+        : onboardingStatus?.verification?.status === 'pending_admin_approval' ||
+            onboardingStatus?.verification?.status === 'pending'
+          ? 'pending_admin_approval'
+          : 'pending_submission');
+  const statusMessage =
+    accountState?.status_message ||
+    onboardingStatus?.status_message ||
+    'Your request is submitted. Please wait until admin approval to access the app.';
 
   React.useEffect(() => {
-    if (canUseApp) {
+    if (accessStatus === 'approved') {
       router.replace('/home');
       return;
     }
-    if (verificationStatus === 'rejected') {
+    if (accessStatus === 'rejected' || accessStatus === 'pending_submission') {
       router.replace('/setup');
     }
-  }, [canUseApp, verificationStatus, router]);
+  }, [accessStatus, router]);
+
+  React.useEffect(() => {
+    if (!session?.accessToken) return;
+    const originalState = window.history.state;
+    window.history.pushState({ ...originalState, __igniteReviewGate: true }, '', window.location.href);
+    const onPopState = () => {
+      logout();
+      router.replace('/login');
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, [session?.accessToken, logout, router]);
 
   if (isLoading) {
     return (
@@ -62,7 +87,7 @@ export default function ReviewPendingPage() {
           <Flame className="text-crimson" />
         </div>
         <h1 className="text-2xl font-serif font-bold mb-2">Verification in review</h1>
-        <p className="text-zinc-400 mb-6">Your request is submitted. Please wait until admin approval to access the app.</p>
+        <p className="text-zinc-400 mb-6">{statusMessage}</p>
         <button
           onClick={() => void refreshOnboardingStatus()}
           className="w-full rounded-xl bg-crimson px-5 py-3 text-white font-medium hover:bg-crimson/90 transition-colors"

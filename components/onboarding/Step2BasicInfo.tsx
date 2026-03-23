@@ -1,14 +1,16 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Step2BasicInfo() {
   const { data, updateData, nextStep, prevStep } = useOnboarding();
+  const birthdayInputRef = useRef<HTMLInputElement>(null);
 
   const calculateAge = (dob: string) => {
     if (!dob) return '';
@@ -19,6 +21,7 @@ export default function Step2BasicInfo() {
   };
 
   const genders = ['Man', 'Woman', 'Non-binary', 'More options...'];
+  const pronounOptions = ['he/him', 'she/her', 'they/them', 'other'];
 
   const handleHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateData({ height: parseInt(e.target.value) || 0 });
@@ -62,12 +65,28 @@ export default function Step2BasicInfo() {
         <div className="space-y-2">
           <Label className="text-zinc-400 font-mono text-xs uppercase">Birthday</Label>
           <div className="flex gap-4">
-            <Input
-              type="date"
-              value={data.birthday}
-              onChange={(e) => updateData({ birthday: e.target.value })}
-              className="flex-1 bg-transparent border-zinc-700 focus:border-crimson text-white"
-            />
+            <div className="relative flex-1">
+              <Input
+                ref={birthdayInputRef}
+                type="date"
+                value={data.birthday}
+                onChange={(e) => updateData({ birthday: e.target.value })}
+                className="w-full bg-transparent border-zinc-700 focus:border-crimson text-white pr-10 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:pointer-events-none"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const input = birthdayInputRef.current;
+                  if (!input) return;
+                  input.showPicker?.();
+                  input.focus();
+                  input.click();
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors"
+              >
+                <CalendarDays size={16} />
+              </button>
+            </div>
             <div className="w-20 flex items-center justify-center p-3 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono">
               {calculateAge(data.birthday)}
             </div>
@@ -98,12 +117,20 @@ export default function Step2BasicInfo() {
         {/* Pronouns */}
         <div className="space-y-2">
           <Label className="text-zinc-400 font-mono text-xs uppercase">Pronouns (Optional)</Label>
-          <Input
+          <select
             value={data.pronouns}
             onChange={(e) => updateData({ pronouns: e.target.value })}
-            className="bg-transparent border-zinc-700 focus:border-crimson text-white"
-            placeholder="e.g. he/him"
-          />
+            className="w-full h-10 rounded-md bg-transparent border border-zinc-700 focus:border-crimson text-white px-3 text-sm outline-none"
+          >
+            <option value="" className="bg-zinc-900 text-zinc-300">
+              Select pronouns
+            </option>
+            {pronounOptions.map((option) => (
+              <option key={option} value={option} className="bg-zinc-900 text-white">
+                {option}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Height */}

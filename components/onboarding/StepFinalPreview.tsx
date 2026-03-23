@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PHONE_NUMBER_REGEX = /^\+[1-9]\d{7,14}$/;
+const PASSING_YEAR_REGEX = /^(19|20)\d{2}$/;
 
 export default function StepFinalPreview() {
   const router = useRouter();
@@ -17,8 +18,16 @@ export default function StepFinalPreview() {
   const { data, updateData, prevStep } = useOnboarding();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-  const verificationStatus =
-    onboardingStatus?.verification?.status || accountState?.verification_status || 'pending_submission';
+  const accessStatus =
+    accountState?.access_status ||
+    (accountState?.can_use_app || onboardingStatus?.verification?.status === 'approved'
+      ? 'approved'
+      : onboardingStatus?.verification?.status === 'rejected'
+        ? 'rejected'
+        : onboardingStatus?.verification?.status === 'pending_admin_approval' ||
+            onboardingStatus?.verification?.status === 'pending'
+          ? 'pending_admin_approval'
+          : 'pending_submission');
 
   const normalizeErrorMessage = (message: string) => {
     const trimmed = message.trim();
@@ -43,8 +52,16 @@ export default function StepFinalPreview() {
     return Math.abs(ageDate.getUTCFullYear() - 1970);
   };
 
+  const normalizeOptionalUrl = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const parsed = new URL(withProtocol);
+    return parsed.toString();
+  };
+
   const handleGoLive = async () => {
-    if (verificationStatus === 'pending') {
+    if (accessStatus === 'pending_admin_approval') {
       router.replace('/setup/review');
       return;
     }
@@ -77,8 +94,25 @@ export default function StepFinalPreview() {
       setErrorMessage('Please enter a valid phone number (e.g. +85291234567).');
       return;
     }
+    const passingYear = Number(data.passingYear.trim());
+    const currentYear = new Date().getFullYear();
+    if (!PASSING_YEAR_REGEX.test(data.passingYear.trim()) || passingYear < 1950 || passingYear > currentYear + 10) {
+      setErrorMessage('Please enter a valid passing year.');
+      return;
+    }
     if (!resolvedUniversityId && !selectedUniversityName) {
       setErrorMessage('Please enter your university name.');
+      return;
+    }
+    let instagramLink: string | undefined;
+    let wechatLink: string | undefined;
+    let xiaohongshuLink: string | undefined;
+    try {
+      instagramLink = normalizeOptionalUrl(data.instagramLink);
+      wechatLink = normalizeOptionalUrl(data.wechatLink);
+      xiaohongshuLink = normalizeOptionalUrl(data.xiaohongshuLink);
+    } catch {
+      setErrorMessage('Please enter valid social profile links.');
       return;
     }
     setIsSubmitting(true);
@@ -87,7 +121,9 @@ export default function StepFinalPreview() {
       await submitOnboardingAndVerification({
         first_name: data.firstName,
         last_name: data.lastName,
+        nick_name: data.nickName.trim() || undefined,
         birth_date: data.birthday,
+        passing_year: passingYear,
         gender: data.gender,
         pronouns: data.pronouns,
         height_cm: data.height,
@@ -105,6 +141,9 @@ export default function StepFinalPreview() {
         custom_university_name: resolvedUniversityId ? '' : selectedUniversityName,
         document_url: data.verificationDocumentUrl,
         phone_number: data.phoneNumber.trim(),
+        instagram_link: instagramLink,
+        wechat_link: wechatLink,
+        xiaohongshu_link: xiaohongshuLink,
         photo_urls: data.photos.map((photo) => photo.url).filter(Boolean),
       });
       router.replace('/setup/review');
@@ -197,7 +236,7 @@ export default function StepFinalPreview() {
         {errorMessage ? <p className="text-sm text-crimson">{errorMessage}</p> : null}
         <Button
           onClick={() => void handleGoLive()}
-          disabled={isSubmitting || !data.phoneNumber.trim()}
+          disabled={isSubmitting || !data.phoneNumber.trim() || !data.passingYear.trim()}
           className="w-full bg-crimson hover:bg-crimson/90 text-white font-mono h-12 text-lg shadow-[0_0_20px_rgba(232,25,44,0.4)]"
         >
           {isSubmitting ? 'Submitting...' : 'Submit for Approval'}

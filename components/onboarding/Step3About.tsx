@@ -37,6 +37,9 @@ type UniversityItem = {
 
 const UNIVERSITY_WORDS_TO_IGNORE = new Set(['the', 'of', 'and', 'university', 'college', 'institute']);
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const COUNTRY_CODES = ['+852', '+1', '+44', '+61', '+65', '+91', '+971'];
+const CUSTOM_UNIVERSITY_TEXT = 'My university is not listed';
+const PASSING_YEAR_REGEX = /^(19|20)\d{2}$/;
 
 export default function Step3About() {
   const { data, updateData, nextStep, prevStep } = useOnboarding();
@@ -46,10 +49,29 @@ export default function Step3About() {
   const [isUploadingDocument, setIsUploadingDocument] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [universityError, setUniversityError] = useState<string | null>(null);
+  const [isCustomUniversitySelected, setIsCustomUniversitySelected] = useState(
+    Boolean(data.universityName.trim() && !UUID_REGEX.test(data.universityId.trim()))
+  );
+  const [customUniversityName, setCustomUniversityName] = useState(
+    !UUID_REGEX.test(data.universityId.trim()) ? data.universityName : ''
+  );
+  const [phoneCountryCode, setPhoneCountryCode] = useState(() => {
+    const matchedCode = COUNTRY_CODES.find((code) => data.phoneNumber.startsWith(code));
+    return matchedCode || '+852';
+  });
+  const [phoneLocalNumber, setPhoneLocalNumber] = useState(() => {
+    const matchedCode = COUNTRY_CODES.find((code) => data.phoneNumber.startsWith(code));
+    if (matchedCode) return data.phoneNumber.slice(matchedCode.length);
+    if (data.phoneNumber.startsWith('+')) return data.phoneNumber.replace(/^\+\d{1,4}/, '');
+    return data.phoneNumber;
+  });
 
   const maxLength = 300;
   const currentLength = data.bio.length;
   const isNearLimit = currentLength >= maxLength * 0.8;
+  const currentYear = new Date().getFullYear();
+  const isPassingYearValid =
+    PASSING_YEAR_REGEX.test(data.passingYear.trim()) && Number(data.passingYear) >= 1950 && Number(data.passingYear) <= currentYear + 10;
 
   const tips = [
     "What's a non-negotiable for you?",
@@ -69,6 +91,12 @@ export default function Step3About() {
     }, 300);
     return () => clearTimeout(timeout);
   }, [data.universityQuery, searchUniversities]);
+
+  React.useEffect(() => {
+    updateData({
+      phoneNumber: `${phoneCountryCode}${phoneLocalNumber.replace(/\D/g, '')}`,
+    });
+  }, [phoneCountryCode, phoneLocalNumber, updateData]);
 
   const hkUniversities = useMemo<UniversityItem[]>(() => {
     const keywords = ['hong kong', 'hku', 'hkust', 'cityu', 'polyu', 'lingnan', 'eduhk', 'hkbu'];
@@ -174,6 +202,25 @@ export default function Step3About() {
   };
 
   const handleNextStep = async () => {
+    if (!isPassingYearValid) {
+      return;
+    }
+    if (isCustomUniversitySelected) {
+      const customName = customUniversityName.trim();
+      if (!customName) {
+        setUniversityError('Please enter your university name.');
+        return;
+      }
+      updateData({
+        universityId: '',
+        universityName: customName,
+        universityQuery: customName,
+      });
+      setUniversityError(null);
+      nextStep();
+      return;
+    }
+
     if (UUID_REGEX.test(data.universityId.trim())) {
       setUniversityError(null);
       nextStep();
@@ -254,6 +301,10 @@ export default function Step3About() {
     nextStep();
   };
 
+  const openSocialSite = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="flex flex-col h-full max-w-md mx-auto w-full">
       <div className="mb-6">
@@ -323,20 +374,36 @@ export default function Step3About() {
               placeholder="Product Designer"
             />
           </div>
-
-          <div className="space-y-2">
-            <Label className="text-zinc-400 font-mono text-xs uppercase">Education</Label>
-            <Input
-              value={data.education}
-              onChange={(e) => updateData({ education: e.target.value })}
-              className="bg-transparent border-zinc-700 focus:border-crimson text-white"
-              placeholder="University of Design"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-zinc-400 font-mono text-xs uppercase">Nick Name (Optional)</Label>
+              <Input
+                value={data.nickName}
+                onChange={(event) => updateData({ nickName: event.target.value })}
+                className="bg-transparent border-zinc-700 focus:border-crimson text-white"
+                placeholder="Your nickname"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-zinc-400 font-mono text-xs uppercase">Passing Year</Label>
+              <Input
+                type="number"
+                value={data.passingYear}
+                onChange={(event) => updateData({ passingYear: event.target.value.replace(/[^\d]/g, '').slice(0, 4) })}
+                className="bg-transparent border-zinc-700 focus:border-crimson text-white"
+                placeholder="2026"
+                min={1950}
+                max={currentYear + 10}
+              />
+              {!isPassingYearValid && data.passingYear.trim() ? (
+                <p className="text-xs text-crimson">Enter a valid passing year.</p>
+              ) : null}
+            </div>
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label className="text-zinc-400 font-mono text-xs uppercase">Search University (Hong Kong)</Label>
+          <Label className="text-zinc-400 font-mono text-xs uppercase">Search University</Label>
           <Input
             value={data.universityQuery}
             onFocus={() => setShowUniversityList(true)}
@@ -346,6 +413,7 @@ export default function Step3About() {
               }, 150);
             }}
             onChange={(event) => {
+              setIsCustomUniversitySelected(false);
               updateData({
                 universityQuery: event.target.value,
                 universityId: '',
@@ -356,7 +424,21 @@ export default function Step3About() {
             }}
             className="bg-transparent border-zinc-700 focus:border-crimson text-white"
             placeholder="Search university"
+            readOnly={isCustomUniversitySelected}
           />
+          {isCustomUniversitySelected ? (
+            <div className="space-y-2">
+              <Input
+                value={customUniversityName}
+                onChange={(event) => {
+                  setCustomUniversityName(event.target.value);
+                  setUniversityError(null);
+                }}
+                className="bg-transparent border-zinc-700 focus:border-crimson text-white"
+                placeholder="Enter your university name"
+              />
+            </div>
+          ) : null}
           {showUniversityList ? (
             <div className="max-h-48 overflow-auto rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-sm relative z-50">
               {filteredUniversities.map((university) => (
@@ -364,6 +446,7 @@ export default function Step3About() {
                   key={university.id || university.name}
                   onClick={async () => {
                     setUniversityError(null);
+                    setIsCustomUniversitySelected(false);
                     updateData({
                       universityId: university.id || '',
                       universityName: university.name,
@@ -387,27 +470,112 @@ export default function Step3About() {
                   {university.name}
                 </button>
               ))}
+              <button
+                onClick={() => {
+                  setIsCustomUniversitySelected(true);
+                  setShowUniversityList(false);
+                  setUniversityError(null);
+                  setCustomUniversityName('');
+                  updateData({
+                    universityId: '',
+                    universityName: '',
+                    universityQuery: CUSTOM_UNIVERSITY_TEXT,
+                  });
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-crimson hover:bg-zinc-800 transition-colors border-t border-zinc-800"
+              >
+                {CUSTOM_UNIVERSITY_TEXT}
+              </button>
               {filteredUniversities.length === 0 ? (
                 <div className="px-4 py-3 text-sm text-zinc-400">No universities found.</div>
               ) : null}
             </div>
-          ) : null}
-          {data.universityName ? <p className="text-xs text-zinc-400">Selected: {data.universityName}</p> : null}
-          {!data.universityId && data.universityName ? (
-            <p className="text-xs text-zinc-500">This will be submitted as a custom university.</p>
           ) : null}
           {universityError ? <p className="text-xs text-crimson">{universityError}</p> : null}
         </div>
 
         <div className="space-y-2">
           <Label className="text-zinc-400 font-mono text-xs uppercase">Phone Number</Label>
-          <Input
-            type="tel"
-            value={data.phoneNumber}
-            onChange={(event) => updateData({ phoneNumber: event.target.value })}
-            className="bg-transparent border-zinc-700 focus:border-crimson text-white"
-            placeholder="+85291234567"
-          />
+          <div className="flex gap-2">
+            <select
+              value={phoneCountryCode}
+              onChange={(event) => setPhoneCountryCode(event.target.value)}
+              className="h-12 rounded-md bg-transparent border border-zinc-700 focus:border-crimson text-white px-3 text-sm outline-none"
+            >
+              {COUNTRY_CODES.map((code) => (
+                <option key={code} value={code} className="bg-zinc-900 text-white">
+                  {code}
+                </option>
+              ))}
+            </select>
+            <Input
+              type="tel"
+              value={phoneLocalNumber}
+              onChange={(event) => setPhoneLocalNumber(event.target.value)}
+              className="flex-1 h-12 bg-transparent border-zinc-700 focus:border-crimson text-white"
+              placeholder="Phone number"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label className="text-zinc-400 font-mono text-xs uppercase">Instagram Link (Optional)</Label>
+            <div className="flex gap-2">
+              <Input
+                value={data.instagramLink}
+                onChange={(event) => updateData({ instagramLink: event.target.value })}
+                className="flex-1 bg-transparent border-zinc-700 focus:border-crimson text-white"
+                placeholder="https://instagram.com/yourhandle"
+              />
+              <Button
+                type="button"
+                onClick={() => openSocialSite('https://instagram.com')}
+                variant="outline"
+                className="border-zinc-700 text-zinc-200 hover:bg-zinc-900"
+              >
+                Open
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-zinc-400 font-mono text-xs uppercase">WeChat Link (Optional)</Label>
+            <div className="flex gap-2">
+              <Input
+                value={data.wechatLink}
+                onChange={(event) => updateData({ wechatLink: event.target.value })}
+                className="flex-1 bg-transparent border-zinc-700 focus:border-crimson text-white"
+                placeholder="https://weixin.qq.com"
+              />
+              <Button
+                type="button"
+                onClick={() => openSocialSite('https://weixin.qq.com')}
+                variant="outline"
+                className="border-zinc-700 text-zinc-200 hover:bg-zinc-900"
+              >
+                Open
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-zinc-400 font-mono text-xs uppercase">Xiaohongshu Link (Optional)</Label>
+            <div className="flex gap-2">
+              <Input
+                value={data.xiaohongshuLink}
+                onChange={(event) => updateData({ xiaohongshuLink: event.target.value })}
+                className="flex-1 bg-transparent border-zinc-700 focus:border-crimson text-white"
+                placeholder="https://www.xiaohongshu.com"
+              />
+              <Button
+                type="button"
+                onClick={() => openSocialSite('https://www.xiaohongshu.com')}
+                variant="outline"
+                className="border-zinc-700 text-zinc-200 hover:bg-zinc-900"
+              >
+                Open
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -444,8 +612,10 @@ export default function Step3About() {
           disabled={
             !data.bio.trim() ||
             !data.occupation.trim() ||
-            !data.universityQuery.trim() ||
-            !data.phoneNumber.trim() ||
+            !isPassingYearValid ||
+            (!isCustomUniversitySelected && !data.universityQuery.trim()) ||
+            (isCustomUniversitySelected && !customUniversityName.trim()) ||
+            !phoneLocalNumber.trim() ||
             !data.verificationDocumentUrl ||
             isUploadingDocument
           }

@@ -12,6 +12,7 @@ import {
   mapApiMatch,
   mapApiNotification,
   mapApiUserToProfile,
+  normalizeAccountState,
   OnboardingStatusPayload,
   SignupPayload,
   UniversityOption,
@@ -89,7 +90,9 @@ interface AppState {
   submitOnboardingAndVerification: (payload: {
     first_name: string;
     last_name: string;
+    nick_name?: string;
     birth_date: string;
+    passing_year: number;
     gender: string;
     pronouns?: string;
     height_cm: number;
@@ -107,6 +110,9 @@ interface AppState {
     custom_university_name?: string;
     document_url: string;
     phone_number: string;
+    instagram_link?: string;
+    wechat_link?: string;
+    xiaohongshu_link?: string;
     photo_urls: string[];
   }) => Promise<VerificationRequest | null>;
 }
@@ -191,14 +197,7 @@ const initialNotifications: AppNotification[] = [
 ];
 
 const parseAccountState = (payload: Record<string, unknown>): AccountState | null => {
-  const accountState = payload.account_state as AccountState | undefined;
-  if (!accountState) return null;
-  return {
-    onboarding_completed: Boolean(accountState.onboarding_completed),
-    onboarding_step: typeof accountState.onboarding_step === 'number' ? accountState.onboarding_step : 0,
-    verification_status: typeof accountState.verification_status === 'string' ? accountState.verification_status : 'pending_submission',
-    can_use_app: Boolean(accountState.can_use_app),
-  };
+  return normalizeAccountState(payload.account_state);
 };
 
 export const useStore = create<AppState>()(
@@ -468,18 +467,26 @@ export const useStore = create<AppState>()(
         const data = status.data || null;
         set((state) => ({
           onboardingStatus: data,
-          accountState: state.accountState
-            ? {
-                ...state.accountState,
-                onboarding_completed: Boolean(data?.onboarding?.completed ?? state.accountState.onboarding_completed),
-                onboarding_step:
-                  typeof data?.onboarding?.step === 'number' ? data.onboarding.step : state.accountState.onboarding_step,
-                verification_status:
-                  typeof data?.verification?.status === 'string'
-                    ? data.verification.status
-                    : state.accountState.verification_status,
-              }
-            : state.accountState,
+          accountState:
+            normalizeAccountState({
+              ...(state.accountState || {}),
+              onboarding_completed: Boolean(data?.onboarding?.completed ?? state.accountState?.onboarding_completed),
+              onboarding_step:
+                typeof data?.onboarding?.step === 'number'
+                  ? data.onboarding.step
+                  : (state.accountState?.onboarding_step ?? 0),
+              verification_status:
+                typeof data?.verification?.status === 'string'
+                  ? data.verification.status
+                  : state.accountState?.verification_status,
+              access_status: data?.access_status ?? state.accountState?.access_status,
+              next_action: data?.next_action ?? state.accountState?.next_action,
+              status_message: data?.status_message ?? state.accountState?.status_message,
+              can_use_app:
+                state.accountState?.can_use_app ||
+                data?.access_status === 'approved' ||
+                data?.verification?.status === 'approved',
+            }) || state.accountState,
         }));
         return data;
       },
@@ -549,11 +556,21 @@ export const useStore = create<AppState>()(
               university_id: payload.university_id,
               document_url: payload.document_url,
               phone_number: payload.phone_number,
+              passing_year: payload.passing_year,
+              nick_name: payload.nick_name || undefined,
+              instagram_link: payload.instagram_link || undefined,
+              wechat_link: payload.wechat_link || undefined,
+              xiaohongshu_link: payload.xiaohongshu_link || undefined,
             }
           : {
               custom_university_name: payload.custom_university_name || '',
               document_url: payload.document_url,
               phone_number: payload.phone_number,
+              passing_year: payload.passing_year,
+              nick_name: payload.nick_name || undefined,
+              instagram_link: payload.instagram_link || undefined,
+              wechat_link: payload.wechat_link || undefined,
+              xiaohongshu_link: payload.xiaohongshu_link || undefined,
             };
         const verificationResponse = await api.submitVerification(token, verificationBody);
         await get().hydrateFromApi();

@@ -57,10 +57,25 @@ export default function LoginPage() {
     try {
       await login(data.email, data.password);
       const { accountState: nextAccountState, onboardingStatus: nextOnboardingStatus } = useStore.getState();
-      const verificationStatus =
-        nextOnboardingStatus?.verification?.status || nextAccountState?.verification_status || "pending_submission";
-      const canUseApp = Boolean(nextAccountState?.can_use_app || verificationStatus === "approved");
-      router.push(canUseApp ? "/home" : "/setup");
+      const accessStatus =
+        nextAccountState?.access_status ||
+        (nextAccountState?.can_use_app || nextOnboardingStatus?.verification?.status === "approved"
+          ? "approved"
+          : nextOnboardingStatus?.verification?.status === "rejected"
+            ? "rejected"
+            : nextOnboardingStatus?.verification?.status === "pending_admin_approval" ||
+                nextOnboardingStatus?.verification?.status === "pending"
+              ? "pending_admin_approval"
+              : "pending_submission");
+      if (accessStatus === "approved") {
+        router.replace("/home");
+        return;
+      }
+      if (accessStatus === "pending_admin_approval") {
+        router.replace("/setup/review");
+        return;
+      }
+      router.replace("/setup");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Invalid email or password";
       setAuthError(message);

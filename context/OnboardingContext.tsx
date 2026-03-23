@@ -5,13 +5,16 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 export type Photo = {
   id: string;
   url: string;
+  file?: File;
 };
 
 export type OnboardingData = {
   photos: Photo[];
   firstName: string;
   lastName: string;
+  nickName: string;
   birthday: string;
+  passingYear: string;
   gender: string;
   pronouns: string;
   height: number;
@@ -23,6 +26,9 @@ export type OnboardingData = {
   universityId: string;
   universityName: string;
   phoneNumber: string;
+  instagramLink: string;
+  wechatLink: string;
+  xiaohongshuLink: string;
   verificationDocumentUrl: string;
   verificationDocumentName: string;
   interests: string[];
@@ -48,7 +54,9 @@ const defaultData: OnboardingData = {
   photos: [],
   firstName: '',
   lastName: '',
+  nickName: '',
   birthday: '',
+  passingYear: '',
   gender: '',
   pronouns: '',
   height: 170,
@@ -60,6 +68,9 @@ const defaultData: OnboardingData = {
   universityId: '',
   universityName: '',
   phoneNumber: '',
+  instagramLink: '',
+  wechatLink: '',
+  xiaohongshuLink: '',
   verificationDocumentUrl: '',
   verificationDocumentName: '',
   interests: [],

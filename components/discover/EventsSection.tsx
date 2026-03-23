@@ -11,11 +11,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import CustomMap from "@/components/CustomMap";
 import { api, EventJoinRequest, EventRecord } from "@/lib/api";
 import { useStore } from "@/lib/store";
-import { CalendarDays, Check, ChevronRight, Loader2, LocateFixed, MapPin, Navigation, Plus, RefreshCw, Sparkles, Trash2, Users, Wifi } from "lucide-react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Loader2, LocateFixed, MapPin, Navigation, Plus, RefreshCw, Search, SlidersHorizontal, Sparkles, Trash2, Users, Wifi } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type DiscoveryFilter = "all" | "today" | "this-week" | "online" | "in-person";
 type CreateStep = 1 | 2 | 3;
+type DateField = "start" | "end";
 
 type CreateEventFormState = {
   title: string;
@@ -111,6 +112,65 @@ const isOnlineEvent = (event: EventRecord) => {
   return text.includes("online") || text.includes("virtual");
 };
 
+const toNormalizedList = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+const getEventCategory = (event: EventRecord) => {
+  const record = event as EventRecord & {
+    category?: string;
+    event_category?: string;
+    event_type?: string;
+    type?: string;
+    categories?: string[] | string;
+    tags?: string[] | string;
+  };
+  const directCategory = [record.category, record.event_category, record.event_type, record.type]
+    .find((value) => typeof value === "string" && value.trim())
+    ?.trim();
+  if (directCategory) return directCategory;
+  const listCategory = [...toNormalizedList(record.categories), ...toNormalizedList(record.tags)][0];
+  if (listCategory) return listCategory;
+  return isOnlineEvent(event) ? "Online" : "In Person";
+};
+
+const toIsoDate = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const buildMonthGrid = (monthDate: Date) => {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startWeekday = firstDay.getDay();
+  const firstVisibleDate = new Date(year, month, 1 - startWeekday);
+  return Array.from({ length: 42 }).map((_, index) => {
+    const date = new Date(firstVisibleDate);
+    date.setDate(firstVisibleDate.getDate() + index);
+    return {
+      iso: toIsoDate(date),
+      dayNumber: date.getDate(),
+      inCurrentMonth: date.getMonth() === month,
+    };
+  });
+};
+
 const hostNameFromEvent = (event: EventRecord) => `Host ${(event.creator_id || event.id).slice(0, 5).toUpperCase()}`;
 const hostAvatarFromEvent = (event: EventRecord) =>
   `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(event.creator_id || event.id)}`;
@@ -139,8 +199,16 @@ export function EventsSection() {
 
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [search, setSearch] = useState("");
-  const [city, setCity] = useState("");
   const [discoveryFilter, setDiscoveryFilter] = useState<DiscoveryFilter>("all");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [activeDateField, setActiveDateField] = useState<DateField>("start");
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
 
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
@@ -194,23 +262,8 @@ export function EventsSection() {
     setEventsLoading(true);
     setEventsError(null);
     try {
-      const now = new Date();
-      const fromDate =
-        discoveryFilter === "today" || discoveryFilter === "this-week"
-          ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
-          : null;
-      const toDate =
-        discoveryFilter === "today"
-          ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
-          : discoveryFilter === "this-week"
-            ? new Date(now.getFullYear(), now.getMonth(), now.getDate() + 6, 23, 59, 59, 999)
-            : null;
       const response = await api.listEvents(token, {
-        search: search.trim() || undefined,
-        city: city.trim() || undefined,
         status: "approved",
-        from_date: fromDate ? fromDate.toISOString() : undefined,
-        to_date: toDate ? toDate.toISOString() : undefined,
         limit: 80,
         offset: 0,
       });
@@ -220,7 +273,7 @@ export function EventsSection() {
     } finally {
       setEventsLoading(false);
     }
-  }, [token, search, city, discoveryFilter]);
+  }, [token]);
 
   const loadMyCreatedEvents = useCallback(async () => {
     if (!token) return;
@@ -318,7 +371,30 @@ export function EventsSection() {
     [events]
   );
 
+  const categoryFilterOptions = useMemo(() => {
+    const set = new Set<string>();
+    approvedEvents.forEach((event) => set.add(getEventCategory(event)));
+    return ["all", ...Array.from(set)];
+  }, [approvedEvents]);
+
+  const selectedDateLabel = useMemo(() => {
+    if (!startDate && !endDate) return "Any Date";
+    if (startDate && endDate) return `${startDate} to ${endDate}`;
+    return startDate || endDate;
+  }, [endDate, startDate]);
+
+  const currentMonthLabel = useMemo(
+    () => calendarMonth.toLocaleString([], { month: "long", year: "numeric" }),
+    [calendarMonth]
+  );
+
+  const monthDays = useMemo(() => buildMonthGrid(calendarMonth), [calendarMonth]);
+  const todayIso = useMemo(() => toIsoDate(new Date()), []);
+
   const feedEvents = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const fromTime = startDate ? new Date(`${startDate}T00:00:00`).getTime() : null;
+    const toTime = endDate ? new Date(`${endDate}T23:59:59`).getTime() : null;
     const sorted = [...approvedEvents].sort((a, b) => {
       const liveDiff = Number(isLiveEvent(b, nowTick)) - Number(isLiveEvent(a, nowTick));
       if (liveDiff !== 0) return liveDiff;
@@ -327,7 +403,14 @@ export function EventsSection() {
       return aStart - bStart;
     });
     return sorted.filter((event) => {
+      const eventCategory = getEventCategory(event);
+      const eventTime = event.starts_at ? new Date(event.starts_at).getTime() : Number.NaN;
+      const content = [event.title, event.description, event.location_name, event.city, event.country, eventCategory].join(" ").toLowerCase();
       if (!isUpcomingEvent(event, nowTick) && !isLiveEvent(event, nowTick)) return false;
+      if (query && !content.includes(query)) return false;
+      if (selectedCategory !== "all" && eventCategory !== selectedCategory) return false;
+      if (fromTime !== null && (Number.isNaN(eventTime) || eventTime < fromTime)) return false;
+      if (toTime !== null && (Number.isNaN(eventTime) || eventTime > toTime)) return false;
       if (discoveryFilter === "all") return true;
       if (discoveryFilter === "today") return isToday(event.starts_at);
       if (discoveryFilter === "this-week") return isThisWeek(event.starts_at);
@@ -335,7 +418,7 @@ export function EventsSection() {
       if (discoveryFilter === "in-person") return !isOnlineEvent(event);
       return true;
     });
-  }, [approvedEvents, nowTick, discoveryFilter]);
+  }, [approvedEvents, nowTick, discoveryFilter, search, selectedCategory, startDate, endDate]);
 
   const dashboardItems = useMemo(() => {
     const created = myCreatedEvents.map((event) => ({
@@ -653,29 +736,82 @@ export function EventsSection() {
             ))}
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <input
-              aria-label="Search events"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search events"
-              className="h-11 rounded-xl border border-white/15 bg-black/30 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/50 focus:outline-none"
-            />
-            <input
-              aria-label="Filter by city"
-              value={city}
-              onChange={(event) => setCity(event.target.value)}
-              placeholder="City"
-              className="h-11 rounded-xl border border-white/15 bg-black/30 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/50 focus:outline-none"
-            />
-            <button
-              type="button"
-              aria-label="Refresh events feed"
-              onClick={() => void loadEvents()}
-              className="h-11 rounded-xl border border-white/15 bg-white/10 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/15"
-            >
-              Refresh Feed
-            </button>
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            {categoryFilterOptions.map((category) => (
+              <button
+                key={category}
+                type="button"
+                aria-label={`Filter by ${category === "all" ? "all categories" : category}`}
+                onClick={() => setSelectedCategory(category)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium uppercase tracking-[0.12em] transition ${
+                  selectedCategory === category
+                    ? "border-crimson bg-crimson/25 text-offwhite"
+                    : "border-white/15 bg-white/[0.03] text-offwhite/70 hover:bg-white/[0.08]"
+                }`}
+              >
+                {category === "all" ? "All Categories" : category}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-3xl border border-white/12 bg-white/[0.03] p-4 md:p-5">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <label className="group relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                <input
+                  aria-label="Search events"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search event, city, category..."
+                  className="h-11 w-full rounded-xl border border-white/15 bg-black/25 pl-9 pr-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
+                />
+              </label>
+              <button
+                type="button"
+                aria-label="Open date calendar"
+                onClick={() => {
+                  const fallbackDate = startDate || endDate;
+                  if (fallbackDate) {
+                    const parsed = new Date(`${fallbackDate}T00:00:00`);
+                    if (!Number.isNaN(parsed.getTime())) {
+                      setCalendarMonth(new Date(parsed.getFullYear(), parsed.getMonth(), 1));
+                    }
+                  }
+                  setActiveDateField(startDate ? "end" : "start");
+                  setCalendarModalOpen(true);
+                }}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/25 px-3 text-sm font-medium text-zinc-200 transition hover:bg-white/10"
+              >
+                <CalendarDays className="h-4 w-4 text-crimson" />
+                Open Calendar
+              </button>
+              <button
+                type="button"
+                aria-label="Clear feed filters"
+                onClick={() => {
+                  setSearch("");
+                  setSelectedCategory("all");
+                  setStartDate("");
+                  setEndDate("");
+                  setDiscoveryFilter("all");
+                }}
+                className="h-11 rounded-xl border border-white/15 bg-black/25 px-3 text-sm font-medium text-zinc-200 transition hover:bg-white/10"
+              >
+                Clear Filters
+              </button>
+              <button
+                type="button"
+                aria-label="Refresh events feed"
+                onClick={() => void loadEvents()}
+                className="h-11 rounded-xl border border-white/15 bg-white/10 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+              >
+                Refresh Feed
+              </button>
+            </div>
+            <div className="mt-3 flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-zinc-400">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Date Range: {selectedDateLabel}
+            </div>
           </div>
         </div>
       </div>
@@ -686,11 +822,11 @@ export function EventsSection() {
         {joinActionError ? <p className="mt-2 text-sm text-rose-400">{joinActionError}</p> : null}
 
         {eventsLoading ? (
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 6 }).map((_, index) => (
               <div key={index} className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
-                <div className="h-52 animate-pulse bg-zinc-800/70" />
-                <div className="space-y-2 p-5">
+                <div className="h-40 animate-pulse bg-zinc-800/70" />
+                <div className="space-y-2 p-4">
                   <div className="h-5 w-2/3 animate-pulse rounded bg-zinc-700/60" />
                   <div className="h-4 w-full animate-pulse rounded bg-zinc-700/50" />
                   <div className="h-4 w-4/5 animate-pulse rounded bg-zinc-700/50" />
@@ -700,9 +836,10 @@ export function EventsSection() {
             ))}
           </div>
         ) : (
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {feedEvents.map((event) => {
               const live = isLiveEvent(event, nowTick);
+              const eventCategory = getEventCategory(event);
               const myJoinStatus = myJoinStatusByEvent[event.id];
               const isMine = myCreatedEventIds.has(event.id);
               const hasSlots = (event.available_slots ?? 1) > 0;
@@ -726,9 +863,9 @@ export function EventsSection() {
                       void openDetails(event.id);
                     }
                   }}
-                  className="group overflow-hidden rounded-3xl border border-white/10 bg-[#121212] shadow-[0_10px_40px_rgba(0,0,0,0.35)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
+                  className="group overflow-hidden rounded-[24px] border border-white/10 bg-[#121212] shadow-[0_10px_32px_rgba(0,0,0,0.35)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(0,0,0,0.45)]"
                 >
-                  <div className="relative h-52 overflow-hidden">
+                  <div className="relative h-40 overflow-hidden">
                     {event.image_url ? (
                       <img src={event.image_url} loading="lazy" alt={event.title || "Event cover"} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                     ) : (
@@ -742,14 +879,17 @@ export function EventsSection() {
                       </span>
                     ) : null}
                     <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
-                      <h3 className="line-clamp-2 text-lg font-semibold text-white">{event.title || "Untitled Event"}</h3>
+                      <h3 className="line-clamp-2 text-base font-semibold text-white">{event.title || "Untitled Event"}</h3>
                       <span className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-semibold uppercase ${chipClass}`}>
                         {isOnlineEvent(event) ? "Online" : "In Person"}
                       </span>
                     </div>
                   </div>
-                  <div className="space-y-4 p-5">
+                  <div className="space-y-3 p-4">
                     <div className="flex items-center gap-2 text-xs text-zinc-300">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-crimson/40 bg-crimson/15 px-2 py-1 font-medium text-[10px] uppercase tracking-[0.12em] text-crimson">
+                        {eventCategory}
+                      </span>
                       <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1">
                         <CalendarDays className="h-3.5 w-3.5 text-crimson" />
                         {toDisplayDateTime(event.starts_at)}
@@ -762,7 +902,7 @@ export function EventsSection() {
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <img src={hostAvatarFromEvent(event)} alt={hostNameFromEvent(event)} loading="lazy" className="h-8 w-8 rounded-full border border-white/20 bg-black/40" />
+                        <img src={hostAvatarFromEvent(event)} alt={hostNameFromEvent(event)} loading="lazy" className="h-7 w-7 rounded-full border border-white/20 bg-black/40" />
                         <div>
                           <p className="text-xs text-zinc-400">Hosted by</p>
                           <p className="text-sm font-medium text-zinc-100">{hostNameFromEvent(event)}</p>
@@ -945,6 +1085,126 @@ export function EventsSection() {
           </div>
         </div>
       </div>
+
+      <Dialog open={calendarModalOpen} onOpenChange={setCalendarModalOpen}>
+        <DialogContent className="border-white/15 bg-[#0C0C0C] text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Select event dates</DialogTitle>
+            <DialogDescription className="text-zinc-400">Choose a start and end date for feed filtering.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                aria-label="Set start date"
+                onClick={() => setActiveDateField("start")}
+                className={`rounded-xl border px-3 py-2 text-left text-xs uppercase tracking-[0.12em] ${
+                  activeDateField === "start" ? "border-crimson bg-crimson/20 text-white" : "border-white/15 bg-white/5 text-zinc-300"
+                }`}
+              >
+                Start: {startDate || "Any"}
+              </button>
+              <button
+                type="button"
+                aria-label="Set end date"
+                onClick={() => setActiveDateField("end")}
+                className={`rounded-xl border px-3 py-2 text-left text-xs uppercase tracking-[0.12em] ${
+                  activeDateField === "end" ? "border-crimson bg-crimson/20 text-white" : "border-white/15 bg-white/5 text-zinc-300"
+                }`}
+              >
+                End: {endDate || "Any"}
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-white/12 bg-white/[0.03] p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <button
+                  type="button"
+                  aria-label="Previous month"
+                  onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/5 text-zinc-200 transition hover:bg-white/10"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <p className="text-sm font-semibold text-white">{currentMonthLabel}</p>
+                <button
+                  type="button"
+                  aria-label="Next month"
+                  onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/5 text-zinc-200 transition hover:bg-white/10"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="mb-2 grid grid-cols-7 gap-1">
+                {weekdayLabels.map((label) => (
+                  <span key={label} className="text-center text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                    {label}
+                  </span>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {monthDays.map((day) => {
+                  const isSelected = day.iso === startDate || day.iso === endDate;
+                  const isToday = day.iso === todayIso;
+                  return (
+                    <button
+                      key={day.iso}
+                      type="button"
+                      aria-label={`Select ${day.iso}`}
+                      onClick={() => {
+                        if (activeDateField === "start") {
+                          setStartDate(day.iso);
+                          if (endDate && day.iso > endDate) setEndDate(day.iso);
+                          setActiveDateField("end");
+                        } else {
+                          if (startDate && day.iso < startDate) {
+                            setStartDate(day.iso);
+                            setEndDate(startDate);
+                          } else {
+                            setEndDate(day.iso);
+                          }
+                        }
+                      }}
+                      className={`h-9 rounded-lg text-sm transition ${
+                        isSelected
+                          ? "bg-crimson text-white"
+                          : day.inCurrentMonth
+                            ? "bg-white/[0.03] text-zinc-200 hover:bg-white/[0.08]"
+                            : "bg-transparent text-zinc-600 hover:bg-white/[0.04]"
+                      } ${isToday && !isSelected ? "border border-crimson/60" : ""}`}
+                    >
+                      {day.dayNumber}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                aria-label="Clear selected dates"
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-zinc-300 transition hover:bg-white/10"
+              >
+                Clear Dates
+              </button>
+              <button
+                type="button"
+                aria-label="Done selecting dates"
+                onClick={() => setCalendarModalOpen(false)}
+                className="rounded-xl border border-crimson/40 bg-crimson px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-crimson/90"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={isJoinDialogOpen}

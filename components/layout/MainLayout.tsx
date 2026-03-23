@@ -14,9 +14,13 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { matches, currentUser, session, hydrateFromApi, refreshOnboardingStatus, accountState, onboardingStatus, logout, refreshWallet, wallet } =
     useStore();
-  const [isHydrated, setIsHydrated] = useState(useStore.persist.hasHydrated());
+  const [isHydrated, setIsHydrated] = useState(useStore.persist?.hasHydrated?.() ?? true);
 
   useEffect(() => {
+    if (!useStore.persist) {
+      setIsHydrated(true);
+      return;
+    }
     const unsubscribeHydrate = useStore.persist.onHydrate(() => setIsHydrated(false));
     const unsubscribeFinishHydration = useStore.persist.onFinishHydration(() => setIsHydrated(true));
     setIsHydrated(useStore.persist.hasHydrated());
@@ -45,14 +49,37 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isHydrated || !session?.accessToken) return;
-    const canUseApp = Boolean(accountState?.can_use_app || onboardingStatus?.verification?.status === "approved");
-    if (!canUseApp) {
+    const accessStatus =
+      accountState?.access_status ||
+      (accountState?.can_use_app || onboardingStatus?.verification?.status === "approved"
+        ? "approved"
+        : onboardingStatus?.verification?.status === "rejected"
+          ? "rejected"
+          : onboardingStatus?.verification?.status === "pending_admin_approval" ||
+              onboardingStatus?.verification?.status === "pending"
+            ? "pending_admin_approval"
+            : "pending_submission");
+    if (accessStatus === "approved") return;
+    if (accessStatus === "pending_admin_approval") {
+      router.replace("/setup/review");
+      return;
+    }
+    if (pathname !== "/setup") {
       router.replace("/setup");
     }
-  }, [isHydrated, session?.accessToken, accountState?.can_use_app, onboardingStatus?.verification?.status, router]);
+  }, [
+    isHydrated,
+    session?.accessToken,
+    accountState?.access_status,
+    accountState?.can_use_app,
+    onboardingStatus?.verification?.status,
+    pathname,
+    router,
+  ]);
 
   const hideNavRoutes = ["/messages/"];
   const showNav = !hideNavRoutes.some((route) => pathname.includes(route) && pathname !== "/messages");
+  const showRightPanel = !pathname.startsWith("/events");
   const unreadMatches = matches.filter((match) => match.isNew).length;
   const navItems = [
     { href: "/home", icon: Flame, label: "Home" },
@@ -78,7 +105,12 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#080808] text-white lg:grid lg:h-screen lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:gap-6 lg:overflow-hidden lg:px-6 lg:py-6">
+    <div
+      className={cn(
+        "min-h-screen bg-[#080808] text-white lg:grid lg:h-screen lg:gap-6 lg:overflow-hidden lg:px-6 lg:py-6",
+        showRightPanel ? "lg:grid-cols-[260px_minmax(0,1fr)_300px]" : "lg:grid-cols-[260px_minmax(0,1fr)]"
+      )}
+    >
       <aside className="hidden lg:flex lg:h-full lg:flex-col lg:rounded-3xl lg:border lg:border-white/10 lg:bg-[#0E0E0E] lg:p-5 lg:shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
         <Link href="/home" className="mb-8 flex items-center gap-2 text-crimson">
           <Flame className="h-7 w-7 fill-crimson" />
@@ -197,32 +229,34 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
       </div>
 
-      <aside className="hidden lg:flex lg:h-full lg:flex-col lg:gap-4 lg:rounded-3xl lg:border lg:border-white/10 lg:bg-[#0E0E0E] lg:p-5 lg:shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
-        <div className="rounded-2xl border border-crimson/20 bg-crimson/10 p-4">
-          <div className="mb-2 flex items-center gap-2 text-crimson">
-            <Sparkles className="h-4 w-4" />
-            <span className="text-xs font-mono uppercase tracking-[0.14em]">Desktop Swipe Tips</span>
+      {showRightPanel ? (
+        <aside className="hidden lg:flex lg:h-full lg:flex-col lg:gap-4 lg:rounded-3xl lg:border lg:border-white/10 lg:bg-[#0E0E0E] lg:p-5 lg:shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
+          <div className="rounded-2xl border border-crimson/20 bg-crimson/10 p-4">
+            <div className="mb-2 flex items-center gap-2 text-crimson">
+              <Sparkles className="h-4 w-4" />
+              <span className="text-xs font-mono uppercase tracking-[0.14em]">Desktop Swipe Tips</span>
+            </div>
+            <div className="space-y-2 text-sm text-zinc-200">
+              <p>Drag cards left to pass, right to like, and up for super like.</p>
+              <p>Use keyboard-friendly buttons under the card for quick actions.</p>
+            </div>
           </div>
-          <div className="space-y-2 text-sm text-zinc-200">
-            <p>Drag cards left to pass, right to like, and up for super like.</p>
-            <p>Use keyboard-friendly buttons under the card for quick actions.</p>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="mb-2 flex items-center gap-2 text-zinc-200">
+              <Compass className="h-4 w-4 text-crimson" />
+              <span className="font-medium">Explore Faster</span>
+            </div>
+            <p className="text-sm text-zinc-400">Discover, Matches, and Messages stay one click away in the left rail.</p>
           </div>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="mb-2 flex items-center gap-2 text-zinc-200">
-            <Compass className="h-4 w-4 text-crimson" />
-            <span className="font-medium">Explore Faster</span>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="mb-2 flex items-center gap-2 text-zinc-200">
+              <ShieldCheck className="h-4 w-4 text-crimson" />
+              <span className="font-medium">Safe by Design</span>
+            </div>
+            <p className="text-sm text-zinc-400">Profile controls and safety actions remain available on every screen size.</p>
           </div>
-          <p className="text-sm text-zinc-400">Discover, Matches, and Messages stay one click away in the left rail.</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="mb-2 flex items-center gap-2 text-zinc-200">
-            <ShieldCheck className="h-4 w-4 text-crimson" />
-            <span className="font-medium">Safe by Design</span>
-          </div>
-          <p className="text-sm text-zinc-400">Profile controls and safety actions remain available on every screen size.</p>
-        </div>
-      </aside>
+        </aside>
+      ) : null}
 
       {showNav && <BottomNav />}
     </div>

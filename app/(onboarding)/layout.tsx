@@ -7,9 +7,13 @@ import { useStore } from "@/lib/store";
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const session = useStore((state) => state.session);
-  const [isHydrated, setIsHydrated] = useState(useStore.persist.hasHydrated());
+  const [isHydrated, setIsHydrated] = useState(useStore.persist?.hasHydrated?.() ?? true);
 
   useEffect(() => {
+    if (!useStore.persist) {
+      setIsHydrated(true);
+      return;
+    }
     const unsubscribeHydrate = useStore.persist.onHydrate(() => setIsHydrated(false));
     const unsubscribeFinishHydration = useStore.persist.onFinishHydration(() => setIsHydrated(true));
     setIsHydrated(useStore.persist.hasHydrated());

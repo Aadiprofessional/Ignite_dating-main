@@ -2,8 +2,9 @@
 
 import { Profile } from "@/lib/mockProfiles";
 import { motion } from "framer-motion";
-import { ChevronDown, MapPin, Briefcase, GraduationCap, X, Heart } from "lucide-react";
+import { ChevronDown, MapPin, Briefcase, GraduationCap, X, Heart, Lock, LockOpen } from "lucide-react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 interface ProfileDetailDrawerProps {
   profile: Profile;
@@ -14,6 +15,7 @@ interface ProfileDetailDrawerProps {
 
 export function ProfileDetailDrawer({ profile, onClose, onLike, onPass }: ProfileDetailDrawerProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
   const nextPhoto = () => {
     if (currentPhotoIndex < profile.photos.length - 1) {
@@ -27,50 +29,46 @@ export function ProfileDetailDrawer({ profile, onClose, onLike, onPass }: Profil
     }
   };
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <motion.div
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 25, stiffness: 200 }}
-      className="fixed inset-0 z-40 bg-black text-white flex flex-col h-full overflow-y-auto pb-24"
+      className="fixed inset-0 z-[130] flex h-full flex-col overflow-y-auto bg-black pb-24 text-white"
     >
-      {/* Header Image Carousel */}
       <div className="relative w-full h-[60vh] shrink-0">
         <img
           src={profile.photos[currentPhotoIndex]}
           alt={profile.name}
           className="w-full h-full object-cover"
         />
-        
-        {/* Gradient Overlay */}
+
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black" />
 
-        {/* Close Button */}
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-black/60 transition-colors z-50"
         >
           <ChevronDown size={32} />
         </button>
 
-        {/* Carousel Indicators */}
         <div className="absolute top-4 left-4 right-16 flex gap-1 z-50">
           {profile.photos.map((_, idx) => (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               className={`h-1 flex-1 rounded-full transition-colors ${idx === currentPhotoIndex ? "bg-white" : "bg-white/30"}`}
             />
           ))}
         </div>
 
-        {/* Tap areas for carousel */}
         <div className="absolute inset-0 flex">
           <div className="w-1/2 h-full" onClick={prevPhoto} />
           <div className="w-1/2 h-full" onClick={nextPhoto} />
         </div>
 
-        {/* Profile Info Overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-6">
           <div className="flex items-end justify-between mb-2">
             <div>
@@ -78,29 +76,45 @@ export function ProfileDetailDrawer({ profile, onClose, onLike, onPass }: Profil
                 {profile.name} <span className="text-2xl font-normal text-zinc-300">{profile.age}</span>
               </h1>
             </div>
-            <div className="bg-black/40 backdrop-blur-md border border-crimson/50 px-3 py-1 rounded-full flex items-center gap-1">
-               <span className="text-crimson font-bold text-sm">{profile.compatibility}%</span>
-               <span className="text-xs text-white/80 font-mono">MATCH</span>
+            <div className={`flex items-center gap-1 rounded-full border border-crimson/50 bg-black/40 px-3 py-1 backdrop-blur-md ${isUnlocked ? "" : "blur-sm"}`}>
+              <span className="text-crimson font-bold text-sm">{profile.compatibility}%</span>
+              <span className="text-xs text-white/80 font-mono">MATCH</span>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2 text-zinc-300 font-mono text-sm">
+
+          <div className={`flex items-center gap-2 text-zinc-300 font-mono text-sm ${isUnlocked ? "" : "blur-sm"}`}>
             <MapPin size={16} className="text-crimson" />
             <span>{profile.distance} km away</span>
           </div>
         </div>
       </div>
 
-      {/* Details Section */}
       <div className="px-6 py-8 space-y-8">
-        {/* Bio */}
-        <div>
+        {!isUnlocked ? (
+          <button
+            onClick={() => setIsUnlocked(true)}
+            className="w-full rounded-2xl border border-crimson/40 bg-crimson/10 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-crimson/20"
+          >
+            <span className="flex items-center justify-center gap-2">
+              <Lock className="h-4 w-4" />
+              Unlock Profile
+            </span>
+          </button>
+        ) : (
+          <div className="w-full rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-200">
+            <span className="flex items-center justify-center gap-2">
+              <LockOpen className="h-4 w-4" />
+              Profile Unlocked
+            </span>
+          </div>
+        )}
+
+        <div className={`${isUnlocked ? "" : "blur-sm select-none"}`}>
           <h3 className="font-serif font-bold text-2xl mb-3 text-crimson">About Me</h3>
           <p className="text-zinc-300 leading-relaxed text-lg">{profile.bio}</p>
         </div>
 
-        {/* Basics */}
-        <div className="flex flex-wrap gap-4">
+        <div className={`flex flex-wrap gap-4 ${isUnlocked ? "" : "blur-sm select-none"}`}>
           <div className="flex items-center gap-2 text-zinc-400 bg-zinc-900/50 px-4 py-2 rounded-full border border-zinc-800">
             <Briefcase size={18} />
             <span>{profile.job}</span>
@@ -111,7 +125,6 @@ export function ProfileDetailDrawer({ profile, onClose, onLike, onPass }: Profil
           </div>
         </div>
 
-        {/* Interests */}
         <div>
           <h3 className="font-serif font-bold text-2xl mb-3 text-crimson">Interests</h3>
           <div className="flex flex-wrap gap-2">
@@ -126,21 +139,19 @@ export function ProfileDetailDrawer({ profile, onClose, onLike, onPass }: Profil
           </div>
         </div>
 
-        {/* More Photos */}
         <div className="grid grid-cols-2 gap-2">
           {profile.photos.slice(1).map((photo, idx) => (
-            <img 
+            <img
               key={idx}
-              src={photo} 
-              alt="Gallery" 
+              src={photo}
+              alt="Gallery"
               className="w-full h-64 object-cover rounded-xl"
             />
           ))}
         </div>
       </div>
 
-      {/* Floating Action Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black/90 to-transparent flex items-center justify-center gap-8 z-50">
+      <div className="fixed bottom-0 left-0 right-0 z-[140] flex items-center justify-center gap-8 bg-gradient-to-t from-black via-black/90 to-transparent p-6">
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
@@ -159,6 +170,7 @@ export function ProfileDetailDrawer({ profile, onClose, onLike, onPass }: Profil
           <Heart size={40} fill="currentColor" strokeWidth={0} />
         </motion.button>
       </div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }

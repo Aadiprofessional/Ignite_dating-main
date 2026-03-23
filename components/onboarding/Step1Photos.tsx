@@ -122,33 +122,31 @@ export default function Step1Photos() {
     })
   );
 
-  const handleAddPhoto = (url: string) => {
+  const handleAddPhoto = (file: File) => {
     if (data.photos.length < 6) {
+      const previewUrl = URL.createObjectURL(file);
       const newPhoto: Photo = {
-        id: Math.random().toString(36).substr(2, 9),
-        url,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        url: previewUrl,
+        file,
       };
       updateData({ photos: [...data.photos, newPhoto] });
     }
   };
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     setPhotoUploadError(null);
-    setIsUploadingPhoto(true);
-    try {
-      const url = await uploadProfilePhoto(file);
-      handleAddPhoto(url);
-    } catch (error) {
-      setPhotoUploadError(error instanceof Error ? error.message : 'Failed to upload photo.');
-    } finally {
-      setIsUploadingPhoto(false);
-      event.target.value = '';
-    }
+    handleAddPhoto(file);
+    event.target.value = '';
   };
 
   const handleRemovePhoto = (id: string) => {
+    const targetPhoto = data.photos.find((p) => p.id === id);
+    if (targetPhoto?.url.startsWith('blob:')) {
+      URL.revokeObjectURL(targetPhoto.url);
+    }
     updateData({ photos: data.photos.filter((p) => p.id !== id) });
   };
 
@@ -163,6 +161,39 @@ export default function Step1Photos() {
   };
 
   const slots = Array.from({ length: 6 });
+
+  const handleNextStep = async () => {
+    if (data.photos.length < 1) return;
+    const pendingUploads = data.photos.filter((photo) => photo.file);
+    if (!pendingUploads.length) {
+      nextStep();
+      return;
+    }
+
+    setPhotoUploadError(null);
+    setIsUploadingPhoto(true);
+    try {
+      const uploadedUrls = await Promise.all(pendingUploads.map((photo) => uploadProfilePhoto(photo.file as File)));
+      const uploadedMap = new Map(pendingUploads.map((photo, index) => [photo.id, uploadedUrls[index]]));
+      const nextPhotos = data.photos.map((photo) => {
+        const uploadedUrl = uploadedMap.get(photo.id);
+        if (!uploadedUrl) return photo;
+        if (photo.url.startsWith('blob:')) {
+          URL.revokeObjectURL(photo.url);
+        }
+        return {
+          id: photo.id,
+          url: uploadedUrl,
+        };
+      });
+      updateData({ photos: nextPhotos });
+      nextStep();
+    } catch (error) {
+      setPhotoUploadError(error instanceof Error ? error.message : 'Failed to upload photo.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -203,11 +234,11 @@ export default function Step1Photos() {
 
       <div className="mt-auto flex justify-end">
         <Button
-          onClick={nextStep}
+          onClick={() => void handleNextStep()}
           disabled={data.photos.length < 1 || isUploadingPhoto}
           className="bg-crimson hover:bg-crimson/90 text-white font-dm-mono px-8"
         >
-          Next Step
+          {isUploadingPhoto ? 'Uploading...' : 'Next Step'}
         </Button>
       </div>
     </div>
