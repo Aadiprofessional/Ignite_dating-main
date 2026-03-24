@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 
-const BASE = "http://localhost:49191";
+const BASE = "http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io";
 const user1 = { email: "ignite_test_1773852469188_1@example.com", password: "StrongPass123!" };
 const user2 = { email: "ignite_test_1773852469188_2@example.com", password: "StrongPass123!" };
 

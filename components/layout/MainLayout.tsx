@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, MessageCircle, Search, User, Users, Sparkles, Compass, ShieldCheck, CalendarRange, LogOut, Coins, Crown } from "lucide-react";
+import { Flame, MessageCircle, Search, User, Users, Sparkles, Compass, ShieldCheck, CalendarRange, LogOut, Coins, Crown, Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -12,7 +12,7 @@ import { BottomNav } from "./BottomNav";
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { matches, currentUser, session, hydrateFromApi, refreshOnboardingStatus, accountState, onboardingStatus, logout, refreshWallet, wallet } =
+  const { matches, notifications, currentUser, session, hydrateFromApi, refreshOnboardingStatus, accountState, onboardingStatus, logout, refreshWallet, wallet } =
     useStore();
   const [isHydrated, setIsHydrated] = useState(useStore.persist?.hasHydrated?.() ?? true);
 
@@ -81,11 +81,13 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   const showNav = !hideNavRoutes.some((route) => pathname.includes(route) && pathname !== "/messages");
   const showRightPanel = !pathname.startsWith("/events");
   const unreadMatches = matches.filter((match) => match.isNew).length;
+  const unreadNotifications = notifications.filter((notification) => !notification.isRead).length;
   const navItems = [
     { href: "/home", icon: Flame, label: "Home" },
     { href: "/discover", icon: Search, label: "Discover" },
     { href: "/events", icon: CalendarRange, label: "Events" },
     { href: "/matches", icon: Users, label: "Matches", badge: unreadMatches },
+    { href: "/notifications", icon: Bell, label: "Notifications", badge: unreadNotifications },
     { href: "/messages", icon: MessageCircle, label: "Messages" },
     { href: "/profile", icon: User, label: "Profile" },
   ];

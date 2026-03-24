@@ -1,6 +1,7 @@
 export interface Profile {
   id: string;
   name: string;
+  username?: string;
   age: number;
   distance: number;
   bio: string;
@@ -9,6 +10,24 @@ export interface Profile {
   compatibility: number;
   job: string;
   education: string;
+  city?: string;
+  country?: string;
+  universityName?: string;
+  likedYou?: boolean;
+  likedYouAt?: string;
+  unlockedByMe?: boolean;
+  verificationStatus?: string;
+  unlockedVerification?: {
+    userId?: string;
+    universityId?: string;
+    customUniversityName?: string | null;
+    phoneNumber?: string;
+    passingYear?: number;
+    nickName?: string;
+    instagramLink?: string;
+    wechatLink?: string | null;
+    xiaohongshuLink?: string | null;
+  };
 }
 
 export const mockProfiles: Profile[] = [

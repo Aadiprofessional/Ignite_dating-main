@@ -57,22 +57,6 @@ const getEventCategory = (event: EventRecord) => {
   return isOnlineEvent(event) ? "Online" : "In Person";
 };
 
-const getEventUniversity = (event: EventRecord) => {
-  const record = event as EventRecord & {
-    university_name?: string;
-    university?: string;
-    custom_university_name?: string;
-    university_id?: string;
-  };
-  return (
-    record.university_name?.trim() ||
-    record.university?.trim() ||
-    record.custom_university_name?.trim() ||
-    record.university_id?.trim() ||
-    "Not specified"
-  );
-};
-
 const getEventType = (event: EventRecord) => {
   const categoryText = getEventCategory(event).toLowerCase();
   const text = [event.title, event.description, categoryText].join(" ").toLowerCase();
@@ -108,6 +92,15 @@ const buildMonthGrid = (monthDate: Date) => {
   });
 };
 
+const getEventColor = (eventKey: string) => {
+  let hash = 0;
+  for (let index = 0; index < eventKey.length; index += 1) {
+    hash = (hash * 33 + eventKey.charCodeAt(index)) | 0;
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 85% 68%)`;
+};
+
 type PublicEventsSectionProps = {
   fullPage?: boolean;
 };
@@ -122,9 +115,7 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
-  const [selectedUniversity, setSelectedUniversity] = useState("all");
   const [selectedLocation, setSelectedLocation] = useState("all");
-  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [activeDateField, setActiveDateField] = useState<"start" | "end">("start");
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
@@ -132,6 +123,7 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
   });
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState("");
 
   useEffect(() => {
     const loadPublicEvents = async () => {
@@ -170,15 +162,6 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
     return ["all", ...Array.from(set)];
   }, [events]);
 
-  const universityOptions = useMemo(() => {
-    const set = new Set<string>();
-    events.forEach((event) => {
-      const value = getEventUniversity(event);
-      if (value && value !== "Not specified") set.add(value);
-    });
-    return ["all", ...Array.from(set)];
-  }, [events]);
-
   const locationOptions = useMemo(() => {
     const set = new Set<string>();
     events.forEach((event) => {
@@ -200,6 +183,52 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
   );
   const monthDays = useMemo(() => buildMonthGrid(calendarMonth), [calendarMonth]);
   const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  const calendarEventsByDate = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    const eventsMap = new Map<string, Array<{ id: string; title: string; startsAtMs: number; event: EventRecord; color: string }>>();
+    events.forEach((event, index) => {
+      const eventCategory = getEventCategory(event);
+      const eventType = getEventType(event);
+      const eventLocation = [event.city, event.country].filter(Boolean).join(", ") || event.location_name || "";
+      const content = [event.title, event.description, event.location_name, event.city, event.country, eventCategory].join(" ").toLowerCase();
+      if (query && !content.includes(query)) return;
+      if (selectedCategory !== "all" && eventCategory !== selectedCategory) return;
+      if (selectedType !== "all" && eventType !== selectedType) return;
+      if (selectedLocation !== "all" && eventLocation !== selectedLocation) return;
+      if (!event.starts_at) return;
+      const startDate = new Date(event.starts_at);
+      if (Number.isNaN(startDate.getTime())) return;
+      const rawEndDate = event.ends_at ? new Date(event.ends_at) : new Date(startDate);
+      const endDate = Number.isNaN(rawEndDate.getTime()) ? new Date(startDate) : rawEndDate;
+      const rangeStart = startDate.getTime() <= endDate.getTime() ? startDate : endDate;
+      const rangeEnd = startDate.getTime() <= endDate.getTime() ? endDate : startDate;
+      const cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate());
+      const rangeEndDate = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate());
+      const eventId = event.id || `${event.title || "event"}-${index}`;
+      const eventEntry = {
+        id: eventId,
+        title: event.title?.trim() || "Untitled event",
+        startsAtMs: startDate.getTime(),
+        event,
+        color: getEventColor(eventId),
+      };
+      while (cursor.getTime() <= rangeEndDate.getTime()) {
+        const iso = toIsoDate(cursor);
+        const existingEvents = eventsMap.get(iso) ?? [];
+        if (!existingEvents.some((item) => item.id === eventId)) {
+          existingEvents.push(eventEntry);
+          existingEvents.sort((a, b) => a.startsAtMs - b.startsAtMs);
+          eventsMap.set(iso, existingEvents);
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    });
+    return eventsMap;
+  }, [events, searchTerm, selectedCategory, selectedLocation, selectedType]);
+  const selectedDayEvents = useMemo(() => {
+    if (!selectedCalendarDay) return [];
+    return (calendarEventsByDate.get(selectedCalendarDay) ?? []).slice(0, 5);
+  }, [calendarEventsByDate, selectedCalendarDay]);
 
   const filteredEvents = useMemo(() => {
     const fromTime = startDate ? new Date(`${startDate}T00:00:00`).getTime() : null;
@@ -209,15 +238,13 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
       .filter((event) => {
         const eventCategory = getEventCategory(event);
         const eventType = getEventType(event);
-        const eventUniversity = getEventUniversity(event);
         const eventLocation = [event.city, event.country].filter(Boolean).join(", ") || event.location_name || "";
-        const content = [event.title, event.description, event.location_name, event.city, event.country, eventCategory, eventUniversity].join(" ").toLowerCase();
+        const content = [event.title, event.description, event.location_name, event.city, event.country, eventCategory].join(" ").toLowerCase();
         const eventTime = event.starts_at ? new Date(event.starts_at).getTime() : Number.NaN;
 
         if (query && !content.includes(query)) return false;
         if (selectedCategory !== "all" && eventCategory !== selectedCategory) return false;
         if (selectedType !== "all" && eventType !== selectedType) return false;
-        if (selectedUniversity !== "all" && eventUniversity !== selectedUniversity) return false;
         if (selectedLocation !== "all" && eventLocation !== selectedLocation) return false;
         if (fromTime !== null && (Number.isNaN(eventTime) || eventTime < fromTime)) return false;
         if (toTime !== null && (Number.isNaN(eventTime) || eventTime > toTime)) return false;
@@ -229,7 +256,7 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
         const bTime = b.starts_at ? new Date(b.starts_at).getTime() : Number.MIN_SAFE_INTEGER;
         return bTime - aTime;
       });
-  }, [endDate, events, searchTerm, selectedCategory, selectedLocation, selectedType, selectedUniversity, startDate]);
+  }, [endDate, events, searchTerm, selectedCategory, selectedLocation, selectedType, startDate]);
 
   const displayEvents = useMemo(() => (fullPage ? filteredEvents : filteredEvents.slice(0, 4)), [filteredEvents, fullPage]);
 
@@ -245,7 +272,7 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-offwhite/65 md:text-base">
             {fullPage
-              ? "Search, filter by university, location, category, type, and use calendar dates to find the exact events you want."
+              ? "Search, filter by location, category, type, and use calendar dates to find the exact events you want."
               : "Browse live public events, filter by category, and open full details instantly."}
           </p>
         </div>
@@ -269,27 +296,16 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
 
         {fullPage ? (
           <div className="mb-7 rounded-3xl border border-white/12 bg-white/[0.03] p-4 md:p-5">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <label className="group relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
                 <input
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Search event, city, university..."
+                  placeholder="Search event, city..."
                   className="h-11 w-full rounded-xl border border-white/15 bg-black/25 pl-9 pr-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
                 />
               </label>
-              <select
-                value={selectedUniversity}
-                onChange={(event) => setSelectedUniversity(event.target.value)}
-                className="h-11 w-full rounded-xl border border-white/15 bg-black/25 px-3 text-sm text-white focus:border-crimson/60 focus:outline-none"
-              >
-                {universityOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option === "all" ? "All Universities" : option}
-                  </option>
-                ))}
-              </select>
               <select
                 value={selectedLocation}
                 onChange={(event) => setSelectedLocation(event.target.value)}
@@ -301,24 +317,6 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
-                onClick={() => {
-                  const fallbackDate = startDate || endDate;
-                  if (fallbackDate) {
-                    const parsed = new Date(`${fallbackDate}T00:00:00`);
-                    if (!Number.isNaN(parsed.getTime())) {
-                      setCalendarMonth(new Date(parsed.getFullYear(), parsed.getMonth(), 1));
-                    }
-                  }
-                  setActiveDateField(startDate ? "end" : "start");
-                  setCalendarModalOpen(true);
-                }}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/25 px-3 text-sm font-medium text-zinc-200 transition hover:bg-white/10"
-              >
-                <CalendarDays className="h-4 w-4 text-crimson" />
-                Open Calendar
-              </button>
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -346,10 +344,10 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
                   setSearchTerm("");
                   setSelectedCategory("all");
                   setSelectedType("all");
-                  setSelectedUniversity("all");
                   setSelectedLocation("all");
                   setStartDate("");
                   setEndDate("");
+                  setSelectedCalendarDay("");
                 }}
                 className="ml-auto rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.12em] text-zinc-200 transition hover:bg-white/[0.08]"
               >
@@ -460,6 +458,161 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
           </p>
         ) : null}
 
+        <div className="mx-auto mt-8 w-full max-w-5xl rounded-3xl border border-white/12 bg-gradient-to-b from-white/[0.04] to-white/[0.02] p-3 md:p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-zinc-300">
+              <CalendarDays className="h-4 w-4 text-crimson" />
+              Event Calendar
+            </p>
+            <p className="text-xs uppercase tracking-[0.12em] text-zinc-500">{currentMonthLabel}</p>
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setActiveDateField("start")}
+              className={`rounded-xl border px-2.5 py-1.5 text-left text-xs transition ${
+                activeDateField === "start" ? "border-crimson/70 bg-crimson/20 text-white" : "border-white/15 bg-white/[0.03] text-zinc-300"
+              }`}
+            >
+              <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-400">From Date</p>
+              <p className="mt-1 font-medium">{startDate || "Not selected"}</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveDateField("end")}
+              className={`rounded-xl border px-2.5 py-1.5 text-left text-xs transition ${
+                activeDateField === "end" ? "border-crimson/70 bg-crimson/20 text-white" : "border-white/15 bg-white/[0.03] text-zinc-300"
+              }`}
+            >
+              <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-400">To Date</p>
+              <p className="mt-1 font-medium">{endDate || "Not selected"}</p>
+            </button>
+          </div>
+          <div className="mt-2 grid grid-cols-1 gap-3 rounded-2xl border border-white/12 bg-black/25 p-2.5 lg:grid-cols-[1fr_300px]">
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-zinc-200 transition hover:bg-white/[0.08]"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-200">{currentMonthLabel}</p>
+                <button
+                  type="button"
+                  onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-zinc-200 transition hover:bg-white/[0.08]"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {weekdayLabels.map((day) => (
+                  <div key={day} className="flex h-6 items-center justify-center text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
+                    {day}
+                  </div>
+                ))}
+                {monthDays.map((day) => {
+                  const isStart = startDate === day.iso;
+                  const isEnd = endDate === day.iso;
+                  const inRange = Boolean(startDate && endDate && day.iso > startDate && day.iso < endDate);
+                  const isToday = day.iso === todayIso;
+                  const dayEvents = calendarEventsByDate.get(day.iso) ?? [];
+                  const dayPrimaryEvent = dayEvents[0];
+                  return (
+                    <button
+                      key={day.iso}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCalendarDay(day.iso);
+                        if (activeDateField === "start") {
+                          setStartDate(day.iso);
+                          if (endDate && day.iso > endDate) setEndDate(day.iso);
+                          setActiveDateField("end");
+                          return;
+                        }
+                        if (!startDate || day.iso >= startDate) {
+                          setEndDate(day.iso);
+                          return;
+                        }
+                        setStartDate(day.iso);
+                        setEndDate(day.iso);
+                      }}
+                      className={`aspect-square w-full overflow-hidden rounded-lg border px-1 py-0.5 text-left transition ${
+                        isStart || isEnd
+                          ? "border-crimson bg-crimson text-white"
+                          : inRange
+                            ? "border border-crimson/35 bg-crimson/15 text-white"
+                            : day.inCurrentMonth
+                              ? "border-white/10 bg-white/[0.03] text-zinc-200 hover:bg-white/[0.08]"
+                              : "border-white/5 bg-transparent text-zinc-600 hover:bg-white/[0.04]"
+                      } ${isToday && !isStart && !isEnd ? "ring-1 ring-crimson/60" : ""}`}
+                    >
+                      <span className="block text-[11px] font-medium">{day.dayNumber}</span>
+                      <span
+                        className={`mt-0.5 block line-clamp-1 text-[8px] leading-tight ${isStart || isEnd ? "text-white" : ""}`}
+                        style={{ color: isStart || isEnd ? undefined : dayPrimaryEvent?.color }}
+                      >
+                        {dayPrimaryEvent?.title || ""}
+                      </span>
+                      <span className={`block text-[8px] leading-tight ${isStart || isEnd ? "text-white/90" : "text-zinc-500"}`}>
+                        {dayEvents.length > 1 ? `+${dayEvents.length - 1}` : ""}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/12 bg-white/[0.02] p-2.5">
+              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-zinc-400">
+                {selectedCalendarDay ? `${selectedCalendarDay} · Top ${Math.min(5, selectedDayEvents.length)} Events` : "Pick a date"}
+              </p>
+              <div className="mt-2 space-y-1.5">
+                {selectedCalendarDay ? (
+                  selectedDayEvents.length > 0 ? (
+                    selectedDayEvents.map((item) => (
+                      <div key={`${selectedCalendarDay}-${item.id}`} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-2 py-1.5">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                          <p className="line-clamp-1 text-xs" style={{ color: item.color }}>
+                            {item.title}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedEvent(item.event);
+                            setDetailsOpen(true);
+                          }}
+                          className="shrink-0 rounded-full border border-crimson/45 bg-crimson/15 px-2 py-1 text-[9px] font-medium uppercase tracking-[0.1em] text-crimson transition hover:bg-crimson/25"
+                        >
+                          View
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-zinc-500">No events for this day.</p>
+                  )
+                ) : (
+                  <p className="text-xs text-zinc-500">Tap any date to quickly view events.</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                  setSelectedCalendarDay("");
+                }}
+                className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-white/15 bg-white/[0.03] px-2.5 py-1.5 text-xs font-medium text-zinc-200 transition hover:bg-white/[0.08]"
+              >
+                Clear Dates
+              </button>
+            </div>
+          </div>
+        </div>
+
         {!fullPage ? (
           <div className="mt-6 flex justify-center">
             <button
@@ -472,121 +625,6 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
           </div>
         ) : null}
       </div>
-
-      <Dialog open={calendarModalOpen} onOpenChange={setCalendarModalOpen}>
-        <DialogContent className="w-[min(94vw,560px)] border-white/15 bg-[#0C0C0C] text-white sm:max-w-[560px]">
-          <DialogHeader>
-            <DialogTitle className="text-white">Select Date Range</DialogTitle>
-            <DialogDescription className="text-zinc-400">Choose start and end dates to filter events in this period.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => setActiveDateField("start")}
-                className={`rounded-xl border px-3 py-2 text-left text-sm transition ${
-                  activeDateField === "start" ? "border-crimson/70 bg-crimson/20 text-white" : "border-white/15 bg-white/[0.03] text-zinc-300"
-                }`}
-              >
-                <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-400">From Date</p>
-                <p className="mt-1 font-medium">{startDate || "Not selected"}</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveDateField("end")}
-                className={`rounded-xl border px-3 py-2 text-left text-sm transition ${
-                  activeDateField === "end" ? "border-crimson/70 bg-crimson/20 text-white" : "border-white/15 bg-white/[0.03] text-zinc-300"
-                }`}
-              >
-                <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-400">To Date</p>
-                <p className="mt-1 font-medium">{endDate || "Not selected"}</p>
-              </button>
-            </div>
-            <div className="rounded-2xl border border-white/12 bg-black/20 p-3">
-              <div className="mb-3 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-zinc-200 transition hover:bg-white/[0.08]"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <p className="text-sm font-semibold text-white">{currentMonthLabel}</p>
-                <button
-                  type="button"
-                  onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-zinc-200 transition hover:bg-white/[0.08]"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-              {weekdayLabels.map((day) => (
-                <div key={day} className="flex h-8 items-center justify-center text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-500">
-                  {day}
-                </div>
-              ))}
-              {monthDays.map((day) => {
-                const isStart = startDate === day.iso;
-                const isEnd = endDate === day.iso;
-                const inRange = Boolean(startDate && endDate && day.iso > startDate && day.iso < endDate);
-                const isToday = day.iso === todayIso;
-                return (
-                  <button
-                    key={day.iso}
-                    type="button"
-                    onClick={() => {
-                      if (activeDateField === "start") {
-                        setStartDate(day.iso);
-                        if (endDate && day.iso > endDate) setEndDate(day.iso);
-                        setActiveDateField("end");
-                        return;
-                      }
-                      if (!startDate || day.iso >= startDate) {
-                        setEndDate(day.iso);
-                        return;
-                      }
-                      setStartDate(day.iso);
-                      setEndDate(day.iso);
-                    }}
-                    className={`flex h-10 items-center justify-center rounded-lg text-sm transition ${
-                      isStart || isEnd
-                        ? "border border-crimson bg-crimson text-white"
-                        : inRange
-                          ? "border border-crimson/35 bg-crimson/15 text-white"
-                          : day.inCurrentMonth
-                            ? "border border-white/10 bg-white/[0.03] text-zinc-200 hover:bg-white/[0.08]"
-                            : "border border-white/5 bg-transparent text-zinc-600 hover:bg-white/[0.04]"
-                    } ${isToday && !isStart && !isEnd ? "ring-1 ring-crimson/60" : ""}`}
-                  >
-                    {day.dayNumber}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setStartDate("");
-                  setEndDate("");
-                }}
-                className="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/[0.08]"
-              >
-                Clear Dates
-              </button>
-              <button
-                type="button"
-                onClick={() => setCalendarModalOpen(false)}
-                className="inline-flex items-center justify-center rounded-xl border border-crimson/50 bg-crimson/85 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-crimson"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="h-[86vh] max-h-[86vh] w-[min(96vw,1200px)] overflow-hidden border-white/15 bg-[#0C0C0C] p-0 text-white sm:max-w-[1200px] [&>button]:z-50 [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/20 [&>button]:bg-black/70 [&>button]:p-1.5 [&>button]:text-white">

@@ -8,11 +8,13 @@ import { useEffect, useRef, useState } from "react";
 interface ProfileGridProps {
   profiles: Profile[];
   onLoadMore: () => void;
+  onLike: (profileId: string) => Promise<void>;
 }
 
-export function ProfileGrid({ profiles, onLoadMore }: ProfileGridProps) {
+export function ProfileGrid({ profiles, onLoadMore, onLike }: ProfileGridProps) {
   const observerTarget = useRef<HTMLDivElement>(null);
   const [likedProfiles, setLikedProfiles] = useState<Set<string>>(new Set());
+  const [loadingLikeId, setLoadingLikeId] = useState<string | null>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -35,7 +37,9 @@ export function ProfileGrid({ profiles, onLoadMore }: ProfileGridProps) {
     };
   }, [onLoadMore]);
 
-  const toggleLike = (id: string) => {
+  const toggleLike = async (id: string) => {
+    if (loadingLikeId) return;
+    setLoadingLikeId(id);
     const newLiked = new Set(likedProfiles);
     if (newLiked.has(id)) {
       newLiked.delete(id);
@@ -43,6 +47,11 @@ export function ProfileGrid({ profiles, onLoadMore }: ProfileGridProps) {
       newLiked.add(id);
     }
     setLikedProfiles(newLiked);
+    try {
+      await onLike(id);
+    } finally {
+      setLoadingLikeId(null);
+    }
   };
 
   return (
@@ -80,8 +89,9 @@ export function ProfileGrid({ profiles, onLoadMore }: ProfileGridProps) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  toggleLike(profile.id);
+                  void toggleLike(profile.id);
                 }}
+                disabled={loadingLikeId === profile.id}
                 className="absolute top-3 right-3 p-2 rounded-full bg-black/20 backdrop-blur-md hover:bg-black/40 transition-colors z-20"
               >
                 <Heart

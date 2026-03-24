@@ -3,7 +3,7 @@
 Set these before running:
 
 ```bash
-BASE_URL="http://localhost:49191"
+BASE_URL="http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io"
 TOKEN="USER_JWT_TOKEN"
 TARGET_USER_ID="00000000-0000-0000-0000-000000000000"
 NOTIFICATION_ID="00000000-0000-0000-0000-000000000000"

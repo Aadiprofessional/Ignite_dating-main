@@ -171,6 +171,15 @@ const buildMonthGrid = (monthDate: Date) => {
   });
 };
 
+const getEventColor = (eventKey: string) => {
+  let hash = 0;
+  for (let index = 0; index < eventKey.length; index += 1) {
+    hash = (hash * 33 + eventKey.charCodeAt(index)) | 0;
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 85% 68%)`;
+};
+
 const hostNameFromEvent = (event: EventRecord) => `Host ${(event.creator_id || event.id).slice(0, 5).toUpperCase()}`;
 const hostAvatarFromEvent = (event: EventRecord) =>
   `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(event.creator_id || event.id)}`;
@@ -205,6 +214,7 @@ export function EventsSection() {
   const [endDate, setEndDate] = useState("");
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [activeDateField, setActiveDateField] = useState<DateField>("start");
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -390,6 +400,53 @@ export function EventsSection() {
 
   const monthDays = useMemo(() => buildMonthGrid(calendarMonth), [calendarMonth]);
   const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  const calendarEventsByDate = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const eventsMap = new Map<string, Array<{ id: string; title: string; startsAtMs: number; event: EventRecord; color: string }>>();
+    approvedEvents.forEach((event, index) => {
+      const eventCategory = getEventCategory(event);
+      const content = [event.title, event.description, event.location_name, event.city, event.country, eventCategory].join(" ").toLowerCase();
+      if (!isUpcomingEvent(event, nowTick) && !isLiveEvent(event, nowTick)) return;
+      if (query && !content.includes(query)) return;
+      if (selectedCategory !== "all" && eventCategory !== selectedCategory) return;
+      if (discoveryFilter === "today" && !isToday(event.starts_at)) return;
+      if (discoveryFilter === "this-week" && !isThisWeek(event.starts_at)) return;
+      if (discoveryFilter === "online" && !isOnlineEvent(event)) return;
+      if (discoveryFilter === "in-person" && isOnlineEvent(event)) return;
+      if (!event.starts_at) return;
+      const startDateValue = new Date(event.starts_at);
+      if (Number.isNaN(startDateValue.getTime())) return;
+      const rawEndDate = event.ends_at ? new Date(event.ends_at) : new Date(startDateValue);
+      const endDateValue = Number.isNaN(rawEndDate.getTime()) ? new Date(startDateValue) : rawEndDate;
+      const rangeStart = startDateValue.getTime() <= endDateValue.getTime() ? startDateValue : endDateValue;
+      const rangeEnd = startDateValue.getTime() <= endDateValue.getTime() ? endDateValue : startDateValue;
+      const cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate());
+      const rangeEndDate = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate());
+      const eventId = event.id || `${event.title || "event"}-${index}`;
+      const eventEntry = {
+        id: eventId,
+        title: event.title?.trim() || "Untitled event",
+        startsAtMs: startDateValue.getTime(),
+        event,
+        color: getEventColor(eventId),
+      };
+      while (cursor.getTime() <= rangeEndDate.getTime()) {
+        const iso = toIsoDate(cursor);
+        const existingEvents = eventsMap.get(iso) ?? [];
+        if (!existingEvents.some((item) => item.id === eventId)) {
+          existingEvents.push(eventEntry);
+          existingEvents.sort((a, b) => a.startsAtMs - b.startsAtMs);
+          eventsMap.set(iso, existingEvents);
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    });
+    return eventsMap;
+  }, [approvedEvents, nowTick, discoveryFilter, search, selectedCategory]);
+  const selectedDayEvents = useMemo(() => {
+    if (!selectedCalendarDay) return [];
+    return (calendarEventsByDate.get(selectedCalendarDay) ?? []).slice(0, 5);
+  }, [calendarEventsByDate, selectedCalendarDay]);
 
   const feedEvents = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -778,6 +835,7 @@ export function EventsSection() {
                     }
                   }
                   setActiveDateField(startDate ? "end" : "start");
+                  setSelectedCalendarDay(fallbackDate || toIsoDate(new Date()));
                   setCalendarModalOpen(true);
                 }}
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/25 px-3 text-sm font-medium text-zinc-200 transition hover:bg-white/10"
@@ -793,6 +851,7 @@ export function EventsSection() {
                   setSelectedCategory("all");
                   setStartDate("");
                   setEndDate("");
+                  setSelectedCalendarDay("");
                   setDiscoveryFilter("all");
                 }}
                 className="h-11 rounded-xl border border-white/15 bg-black/25 px-3 text-sm font-medium text-zinc-200 transition hover:bg-white/10"
@@ -1087,109 +1146,168 @@ export function EventsSection() {
       </div>
 
       <Dialog open={calendarModalOpen} onOpenChange={setCalendarModalOpen}>
-        <DialogContent className="border-white/15 bg-[#0C0C0C] text-white sm:max-w-md">
+        <DialogContent className="border-white/15 bg-[#0C0C0C] p-0 text-white sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="text-white">Select event dates</DialogTitle>
-            <DialogDescription className="text-zinc-400">Choose a start and end date for feed filtering.</DialogDescription>
+            <DialogTitle className="sr-only">Select event dates</DialogTitle>
+            <DialogDescription className="sr-only">Choose a start and end date and browse events in calendar view.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 p-3 md:p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-zinc-300">
+                <CalendarDays className="h-4 w-4 text-crimson" />
+                Event Calendar
+              </p>
+              <p className="text-xs uppercase tracking-[0.12em] text-zinc-500">{currentMonthLabel}</p>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 aria-label="Set start date"
                 onClick={() => setActiveDateField("start")}
-                className={`rounded-xl border px-3 py-2 text-left text-xs uppercase tracking-[0.12em] ${
-                  activeDateField === "start" ? "border-crimson bg-crimson/20 text-white" : "border-white/15 bg-white/5 text-zinc-300"
+                className={`rounded-xl border px-2.5 py-1.5 text-left text-xs transition ${
+                  activeDateField === "start" ? "border-crimson/70 bg-crimson/20 text-white" : "border-white/15 bg-white/[0.03] text-zinc-300"
                 }`}
               >
-                Start: {startDate || "Any"}
+                <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-400">From Date</p>
+                <p className="mt-1 font-medium">{startDate || "Not selected"}</p>
               </button>
               <button
                 type="button"
                 aria-label="Set end date"
                 onClick={() => setActiveDateField("end")}
-                className={`rounded-xl border px-3 py-2 text-left text-xs uppercase tracking-[0.12em] ${
-                  activeDateField === "end" ? "border-crimson bg-crimson/20 text-white" : "border-white/15 bg-white/5 text-zinc-300"
+                className={`rounded-xl border px-2.5 py-1.5 text-left text-xs transition ${
+                  activeDateField === "end" ? "border-crimson/70 bg-crimson/20 text-white" : "border-white/15 bg-white/[0.03] text-zinc-300"
                 }`}
               >
-                End: {endDate || "Any"}
+                <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-400">To Date</p>
+                <p className="mt-1 font-medium">{endDate || "Not selected"}</p>
               </button>
             </div>
-
-            <div className="rounded-2xl border border-white/12 bg-white/[0.03] p-3">
-              <div className="mb-3 flex items-center justify-between">
-                <button
-                  type="button"
-                  aria-label="Previous month"
-                  onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/5 text-zinc-200 transition hover:bg-white/10"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <p className="text-sm font-semibold text-white">{currentMonthLabel}</p>
-                <button
-                  type="button"
-                  aria-label="Next month"
-                  onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/5 text-zinc-200 transition hover:bg-white/10"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="mb-2 grid grid-cols-7 gap-1">
-                {weekdayLabels.map((label) => (
-                  <span key={label} className="text-center text-[11px] uppercase tracking-[0.12em] text-zinc-500">
-                    {label}
-                  </span>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {monthDays.map((day) => {
-                  const isSelected = day.iso === startDate || day.iso === endDate;
-                  const isToday = day.iso === todayIso;
-                  return (
-                    <button
-                      key={day.iso}
-                      type="button"
-                      aria-label={`Select ${day.iso}`}
-                      onClick={() => {
-                        if (activeDateField === "start") {
-                          setStartDate(day.iso);
-                          if (endDate && day.iso > endDate) setEndDate(day.iso);
-                          setActiveDateField("end");
-                        } else {
-                          if (startDate && day.iso < startDate) {
+            <div className="grid grid-cols-1 gap-3 rounded-2xl border border-white/12 bg-black/25 p-2.5 lg:grid-cols-[1fr_280px]">
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <button
+                    type="button"
+                    aria-label="Previous month"
+                    onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-zinc-200 transition hover:bg-white/[0.08]"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-200">{currentMonthLabel}</p>
+                  <button
+                    type="button"
+                    aria-label="Next month"
+                    onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-zinc-200 transition hover:bg-white/[0.08]"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {weekdayLabels.map((day) => (
+                    <div key={day} className="flex h-6 items-center justify-center text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
+                      {day}
+                    </div>
+                  ))}
+                  {monthDays.map((day) => {
+                    const isStart = startDate === day.iso;
+                    const isEnd = endDate === day.iso;
+                    const inRange = Boolean(startDate && endDate && day.iso > startDate && day.iso < endDate);
+                    const isToday = day.iso === todayIso;
+                    const dayEvents = calendarEventsByDate.get(day.iso) ?? [];
+                    const dayPrimaryEvent = dayEvents[0];
+                    return (
+                      <button
+                        key={day.iso}
+                        type="button"
+                        aria-label={`Select ${day.iso}`}
+                        onClick={() => {
+                          setSelectedCalendarDay(day.iso);
+                          if (activeDateField === "start") {
                             setStartDate(day.iso);
-                            setEndDate(startDate);
-                          } else {
-                            setEndDate(day.iso);
+                            if (endDate && day.iso > endDate) setEndDate(day.iso);
+                            setActiveDateField("end");
+                            return;
                           }
-                        }
-                      }}
-                      className={`h-9 rounded-lg text-sm transition ${
-                        isSelected
-                          ? "bg-crimson text-white"
-                          : day.inCurrentMonth
-                            ? "bg-white/[0.03] text-zinc-200 hover:bg-white/[0.08]"
-                            : "bg-transparent text-zinc-600 hover:bg-white/[0.04]"
-                      } ${isToday && !isSelected ? "border border-crimson/60" : ""}`}
-                    >
-                      {day.dayNumber}
-                    </button>
-                  );
-                })}
+                          if (!startDate || day.iso >= startDate) {
+                            setEndDate(day.iso);
+                            return;
+                          }
+                          setStartDate(day.iso);
+                          setEndDate(day.iso);
+                        }}
+                        className={`aspect-square w-full overflow-hidden rounded-lg border px-1 py-0.5 text-left transition ${
+                          isStart || isEnd
+                            ? "border-crimson bg-crimson text-white"
+                            : inRange
+                              ? "border border-crimson/35 bg-crimson/15 text-white"
+                              : day.inCurrentMonth
+                                ? "border-white/10 bg-white/[0.03] text-zinc-200 hover:bg-white/[0.08]"
+                                : "border-white/5 bg-transparent text-zinc-600 hover:bg-white/[0.04]"
+                        } ${isToday && !isStart && !isEnd ? "ring-1 ring-crimson/60" : ""}`}
+                      >
+                        <span className="block text-[11px] font-medium">{day.dayNumber}</span>
+                        <span
+                          className={`mt-0.5 block line-clamp-1 text-[8px] leading-tight ${isStart || isEnd ? "text-white" : ""}`}
+                          style={{ color: isStart || isEnd ? undefined : dayPrimaryEvent?.color }}
+                        >
+                          {dayPrimaryEvent?.title || ""}
+                        </span>
+                        <span className={`block text-[8px] leading-tight ${isStart || isEnd ? "text-white/90" : "text-zinc-500"}`}>
+                          {dayEvents.length > 1 ? `+${dayEvents.length - 1}` : ""}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/12 bg-white/[0.02] p-2.5">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-zinc-400">
+                  {selectedCalendarDay ? `${selectedCalendarDay} · Top ${Math.min(5, selectedDayEvents.length)} Events` : "Pick a date"}
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {selectedCalendarDay ? (
+                    selectedDayEvents.length > 0 ? (
+                      selectedDayEvents.map((item) => (
+                        <div key={`${selectedCalendarDay}-${item.id}`} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-2 py-1.5">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                            <p className="line-clamp-1 text-xs" style={{ color: item.color }}>
+                              {item.title}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCalendarModalOpen(false);
+                              void openDetails(item.event.id);
+                            }}
+                            className="shrink-0 rounded-full border border-crimson/45 bg-crimson/15 px-2 py-1 text-[9px] font-medium uppercase tracking-[0.1em] text-crimson transition hover:bg-crimson/25"
+                          >
+                            View
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-zinc-500">No events for this day.</p>
+                    )
+                  ) : (
+                    <p className="text-xs text-zinc-500">Tap any date to quickly view events.</p>
+                  )}
+                </div>
               </div>
             </div>
-
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
                 aria-label="Clear selected dates"
                 onClick={() => {
                   setStartDate("");
                   setEndDate("");
+                  setSelectedCalendarDay("");
                 }}
-                className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-zinc-300 transition hover:bg-white/10"
+                className="rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2 text-xs font-medium uppercase tracking-[0.1em] text-zinc-300 transition hover:bg-white/[0.08]"
               >
                 Clear Dates
               </button>
@@ -1197,7 +1315,7 @@ export function EventsSection() {
                 type="button"
                 aria-label="Done selecting dates"
                 onClick={() => setCalendarModalOpen(false)}
-                className="rounded-xl border border-crimson/40 bg-crimson px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-crimson/90"
+                className="rounded-lg border border-crimson/40 bg-crimson px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-crimson/90"
               >
                 Done
               </button>

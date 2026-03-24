@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useTransform, AnimatePresence, PanInfo } from "framer-motion";
 import { Profile } from "@/lib/mockProfiles";
 import { ProfileCard } from "./ProfileCard";
@@ -17,6 +17,8 @@ export function CardStack() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
   const [exitDirection, setExitDirection] = useState<"left" | "right" | "up" | null>(null);
+  const [showSwipeFlash, setShowSwipeFlash] = useState(false);
+  const swipeFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (discoverProfiles.length > 0) {
@@ -33,9 +35,23 @@ export function CardStack() {
   // Transforms
   const rotate = useTransform(x, [-300, 300], [-30, 30]);
   
-  // Background Flash Opacity
-  const crimsonFlashOpacity = useTransform(x, [50, 150], [0, 0.3]);
-  const whiteFlashOpacity = useTransform(x, [-150, -50], [0.15, 0]);
+  const triggerSwipeFlash = () => {
+    setShowSwipeFlash(true);
+    if (swipeFlashTimeoutRef.current) {
+      clearTimeout(swipeFlashTimeoutRef.current);
+    }
+    swipeFlashTimeoutRef.current = setTimeout(() => {
+      setShowSwipeFlash(false);
+    }, 2000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (swipeFlashTimeoutRef.current) {
+        clearTimeout(swipeFlashTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const horizontalThreshold = 140;
@@ -57,23 +73,22 @@ export function CardStack() {
   const triggerLike = async () => {
     const currentCard = cards[0];
     if (!currentCard) return;
-
-    // Check for match (40% chance)
-    if (Math.random() < 0.4) {
-      setMatchProfile(currentCard);
-    }
-
+    triggerSwipeFlash();
     setExitDirection("right");
     setTimeout(() => removeCard(currentCard), 50); // Small delay to ensure state update
-    await sendSwipe(currentCard.id, "like");
+    const response = await sendSwipe(currentCard.id, "like");
+    if (response?.result?.is_match) {
+      setMatchProfile(currentCard);
+    }
   };
 
   const triggerPass = async () => {
     const currentCard = cards[0];
     if (!currentCard) return;
+    triggerSwipeFlash();
     setExitDirection("left");
     setTimeout(() => removeCard(currentCard), 50);
-    await sendSwipe(currentCard.id, "pass");
+    await sendSwipe(currentCard.id, "reject");
   };
 
   const triggerSuperLike = async () => {
@@ -81,7 +96,91 @@ export function CardStack() {
     if (!currentCard) return;
     setExitDirection("up");
     setTimeout(() => removeCard(currentCard), 50);
-    await sendSwipe(currentCard.id, "superlike");
+    const response = await sendSwipe(currentCard.id, "superlike");
+    if (response?.result?.is_match) {
+      setMatchProfile(currentCard);
+    }
+  };
+
+  const triggerUnlockProfile = async () => {
+    const currentCard = cards[0];
+    if (!currentCard) return;
+    const response = await sendSwipe(currentCard.id, "unlock_profile");
+    const verification = response?.result?.verification || response?.verification;
+    setCards((previous) =>
+      previous.map((profile) =>
+        profile.id === currentCard.id
+          ? {
+              ...profile,
+              unlockedByMe: true,
+              unlockedVerification: verification
+                ? {
+                    userId: typeof verification.user_id === "string" ? verification.user_id : undefined,
+                    universityId: typeof verification.university_id === "string" ? verification.university_id : undefined,
+                    customUniversityName:
+                      verification.custom_university_name === null
+                        ? null
+                        : typeof verification.custom_university_name === "string"
+                          ? verification.custom_university_name
+                          : undefined,
+                    phoneNumber: typeof verification.phone_number === "string" ? verification.phone_number : undefined,
+                    passingYear: typeof verification.passing_year === "number" ? verification.passing_year : undefined,
+                    nickName: typeof verification.nick_name === "string" ? verification.nick_name : undefined,
+                    instagramLink: typeof verification.instagram_link === "string" ? verification.instagram_link : undefined,
+                    wechatLink:
+                      verification.wechat_link === null
+                        ? null
+                        : typeof verification.wechat_link === "string"
+                          ? verification.wechat_link
+                          : undefined,
+                    xiaohongshuLink:
+                      verification.xiaohongshu_link === null
+                        ? null
+                        : typeof verification.xiaohongshu_link === "string"
+                          ? verification.xiaohongshu_link
+                          : undefined,
+                  }
+                : profile.unlockedVerification,
+            }
+          : profile
+      )
+    );
+    setActiveProfile((previous) =>
+      previous?.id === currentCard.id
+        ? {
+            ...previous,
+            unlockedByMe: true,
+            unlockedVerification: verification
+              ? {
+                  userId: typeof verification.user_id === "string" ? verification.user_id : undefined,
+                  universityId: typeof verification.university_id === "string" ? verification.university_id : undefined,
+                  customUniversityName:
+                    verification.custom_university_name === null
+                      ? null
+                      : typeof verification.custom_university_name === "string"
+                        ? verification.custom_university_name
+                        : undefined,
+                  phoneNumber: typeof verification.phone_number === "string" ? verification.phone_number : undefined,
+                  passingYear: typeof verification.passing_year === "number" ? verification.passing_year : undefined,
+                  nickName: typeof verification.nick_name === "string" ? verification.nick_name : undefined,
+                  instagramLink: typeof verification.instagram_link === "string" ? verification.instagram_link : undefined,
+                  wechatLink:
+                    verification.wechat_link === null
+                      ? null
+                      : typeof verification.wechat_link === "string"
+                        ? verification.wechat_link
+                        : undefined,
+                  xiaohongshuLink:
+                    verification.xiaohongshu_link === null
+                      ? null
+                      : typeof verification.xiaohongshu_link === "string"
+                        ? verification.xiaohongshu_link
+                        : undefined,
+                }
+              : previous.unlockedVerification,
+          }
+        : previous
+    );
   };
 
   const removeCard = (card: Profile) => {
@@ -111,12 +210,12 @@ export function CardStack() {
     initial: (index: number) => ({
       scale: 0.9 - index * 0.05,
       y: index * 20,
-      opacity: index === 0 ? 1 : 0.5
+      opacity: 1
     }),
     animate: (index: number) => ({
       scale: 1 - index * 0.05,
       y: index * 10,
-      opacity: index === 0 ? 1 : (index > 2 ? 0 : 0.5),
+      opacity: index > 2 ? 0 : 1,
       transition: { duration: 0.3 }
     }),
     exit: (direction: string | null) => {
@@ -158,15 +257,17 @@ export function CardStack() {
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center">
-      {/* Background Flashes */}
-      <motion.div 
-        style={{ opacity: crimsonFlashOpacity }}
-        className="fixed inset-0 bg-crimson pointer-events-none z-0 mix-blend-overlay"
-      />
-      <motion.div 
-        style={{ opacity: whiteFlashOpacity }}
-        className="fixed inset-0 bg-white pointer-events-none z-0 mix-blend-overlay"
-      />
+      <AnimatePresence>
+        {showSwipeFlash && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-0 bg-crimson pointer-events-none"
+          />
+        )}
+      </AnimatePresence>
 
       {/* Card Stack */}
       <div className="relative z-10 h-[66vh] w-full max-w-[380px] md:max-w-[420px] lg:h-[70vh] lg:max-w-[460px] xl:max-w-[520px]">
@@ -187,7 +288,7 @@ export function CardStack() {
                 dragElastic={0.6}
                 dragMomentum={false}
                 onDragEnd={isTop ? handleDragEnd : undefined}
-                className="absolute inset-0"
+                className="absolute inset-0 rounded-[20px] bg-white"
                 onClick={() => {
                    if(isTop) {
                      setActiveProfile(profile);
@@ -239,6 +340,7 @@ export function CardStack() {
            <ProfileDetailDrawer 
              profile={activeProfile} 
              onClose={() => setIsDetailOpen(false)}
+             onUnlock={triggerUnlockProfile}
              onLike={() => {
                void triggerLike();
                setIsDetailOpen(false);

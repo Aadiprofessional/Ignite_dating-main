@@ -2,7 +2,7 @@ import { Match } from './mockMatches';
 import { Profile } from './mockProfiles';
 import type { AppNotification, UserProfile } from './store';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:49191';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -141,6 +141,43 @@ export interface CoinTransaction {
   related_transaction_id: string | null;
   meta: Record<string, unknown>;
   transaction_time: string;
+}
+
+export type SwipeAction = 'like' | 'superlike' | 'reject' | 'unlock_profile';
+
+export interface SwipeResult {
+  ok?: boolean;
+  action?: SwipeAction;
+  target_id?: string;
+  is_match?: boolean;
+  already_unlocked?: boolean;
+  coins_charged?: number;
+  coin_transaction_id?: string;
+  wallet?: WalletInfo;
+  profile?: Record<string, unknown>;
+  verification?: Record<string, unknown>;
+}
+
+export interface SwipeResponse {
+  result?: SwipeResult;
+  target_user?: Record<string, unknown>;
+  verification?: Record<string, unknown>;
+}
+
+export interface IncomingLike {
+  swipe_id: string;
+  swiper_id: string;
+  action: string;
+  liked_at: string;
+  user_id: string;
+  username?: string;
+  full_name?: string;
+  bio?: string;
+  photo_urls?: string[];
+  city?: string;
+  country?: string;
+  university_name?: string;
+  distance_km?: number;
 }
 
 interface ApiCallOptions {
@@ -413,14 +450,24 @@ export const mapApiUserToProfile = (
 
 export const mapApiDiscoverProfile = (item: Record<string, unknown>): Profile => {
   const profile = (item.profile as Record<string, unknown> | undefined) || item;
-  const images = pickArray<{ url?: string }>(item.images).map((image) => pickString(image?.url)).filter(Boolean);
+  const imagesFromImages = pickArray<{ url?: string }>(item.images)
+    .map((image) => pickString(image?.url))
+    .filter(Boolean);
+  const imagesFromPhotoUrls = pickArray<string>(profile.photo_urls).filter(Boolean);
+  const images = imagesFromImages.length ? imagesFromImages : imagesFromPhotoUrls;
   const firstName = pickString(profile.first_name);
   const lastName = pickString(profile.last_name);
-  const name = `${firstName} ${lastName}`.trim() || pickString(profile.name, 'Ignite User');
+  const name =
+    pickString(profile.full_name) ||
+    `${firstName} ${lastName}`.trim() ||
+    pickString(profile.username) ||
+    pickString(profile.name, 'Ignite User');
+  const verification = (item.verification as Record<string, unknown> | undefined) || {};
 
   return {
     id: pickString((item as { user_id?: string }).user_id || profile.user_id || profile.id || item.id, crypto.randomUUID()),
     name,
+    username: pickString(profile.username),
     age: calcAge(pickString(profile.birth_date) || pickString(profile.birthdate)),
     distance: Math.round(pickNumber(profile.distance_km, 0)),
     bio: pickString(profile.bio),
@@ -429,6 +476,31 @@ export const mapApiDiscoverProfile = (item: Record<string, unknown>): Profile =>
     compatibility: Math.max(70, Math.min(99, Math.round(pickNumber(profile.compatibility_score, 85)))),
     job: pickString(profile.occupation, 'Member'),
     education: pickString(profile.education),
+    city: pickString(profile.city),
+    country: pickString(profile.country),
+    universityName: pickString(profile.university_name),
+    likedYou: Boolean(profile.liked_you),
+    likedYouAt: pickString(profile.liked_you_at),
+    unlockedByMe: Boolean(profile.unlocked_by_me),
+    verificationStatus: pickString(profile.verification_status),
+    unlockedVerification: {
+      userId: pickString(verification.user_id),
+      universityId: pickString(verification.university_id),
+      customUniversityName:
+        verification.custom_university_name === null
+          ? null
+          : pickString(verification.custom_university_name) || null,
+      phoneNumber: pickString(verification.phone_number),
+      passingYear:
+        typeof verification.passing_year === 'number'
+          ? verification.passing_year
+          : undefined,
+      nickName: pickString(verification.nick_name),
+      instagramLink: pickString(verification.instagram_link),
+      wechatLink: verification.wechat_link === null ? null : pickString(verification.wechat_link) || null,
+      xiaohongshuLink:
+        verification.xiaohongshu_link === null ? null : pickString(verification.xiaohongshu_link) || null,
+    },
   };
 };
 
@@ -437,7 +509,9 @@ export const mapApiMatch = (item: Record<string, unknown>): Match => {
     (item.other_user as Record<string, unknown> | undefined) ||
     (item.profile as Record<string, unknown> | undefined) ||
     {};
-  const images = pickArray<{ url?: string }>(item.images).map((image) => pickString(image?.url)).filter(Boolean);
+  const imagesFromImages = pickArray<{ url?: string }>(item.images).map((image) => pickString(image?.url)).filter(Boolean);
+  const imagesFromProfile = pickArray<string>(profile.photo_urls).filter(Boolean);
+  const images = imagesFromImages.length ? imagesFromImages : imagesFromProfile;
   const firstName = pickString(profile.first_name);
   const lastName = pickString(profile.last_name);
   const matchedAt = pickString((item as { matched_at?: string; created_at?: string }).matched_at) || pickString((item as { created_at?: string }).created_at);
@@ -471,11 +545,33 @@ export const mapApiNotification = (item: Record<string, unknown>): AppNotificati
   };
   const mappedType = mapType[typeRaw] || 'system';
 
+  const fromUserName = pickString(metadata.from_user_name) || pickString(metadata.actor_name) || pickString(metadata.username);
+  const fromUserId = pickString(metadata.from_user_id);
+  const matchId = pickString(metadata.match_id);
+  const fallbackTitleByType: Record<AppNotification['type'], string> = {
+    like: 'New Like',
+    match: "It's a Match!",
+    message: 'New Message',
+    superlike: 'Super Like',
+    boost: 'Boost Activated',
+    verified: 'Verification Update',
+    system: 'Notification',
+  };
+  const fallbackMessageByType: Record<AppNotification['type'], string> = {
+    like: fromUserName ? `${fromUserName} liked your profile.` : fromUserId ? 'Someone liked your profile.' : 'You received a new like.',
+    match: fromUserName ? `You matched with ${fromUserName}.` : matchId ? 'You got a new match.' : 'You got a new match.',
+    message: 'You received a new message.',
+    superlike: fromUserName ? `${fromUserName} sent you a super like.` : 'You received a super like.',
+    boost: 'Your profile visibility is boosted.',
+    verified: 'Your verification status was updated.',
+    system: 'You have a new update.',
+  };
+
   return {
     id: pickString((item as { id?: string }).id, crypto.randomUUID()),
     type: mappedType,
-    title: pickString(item.title, 'Notification'),
-    message: pickString(item.body) || pickString(item.message) || 'You have a new update.',
+    title: pickString(item.title) || fallbackTitleByType[mappedType],
+    message: pickString(item.body) || pickString(item.message) || fallbackMessageByType[mappedType],
     timestamp: createdAt ? new Date(createdAt) : new Date(),
     isRead: Boolean(item.is_read),
     senderAvatar: pickString(metadata.sender_avatar),
@@ -860,12 +956,36 @@ export const api = {
       token,
       body,
     }),
-  swipe: async (token: string, targetId: string, action: 'like' | 'pass' | 'superlike') =>
-    apiCall<Record<string, unknown>>({
+  swipe: async (token: string, targetId: string, action: SwipeAction | 'pass') =>
+    apiCall<SwipeResponse>({
       method: 'POST',
       path: '/api/swipes',
       token,
-      body: { target_id: targetId, action },
+      body: { target_id: targetId, action: action === 'pass' ? 'reject' : action },
+    }),
+  incomingLikes: async (token: string, options?: { limit?: number; offset?: number }) => {
+    const limit = options?.limit ?? 20;
+    const offset = options?.offset ?? 0;
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+    });
+    return apiCall<{ incoming_likes?: IncomingLike[] }>({
+      path: `/api/swipes/incoming-likes?${params.toString()}`,
+      token,
+    });
+  },
+  respondIncomingLike: async (token: string, swiperUserId: string, decision: 'accept' | 'reject') =>
+    apiCall<{
+      decision?: 'accept' | 'reject';
+      result?: SwipeResult;
+      incoming_like?: Record<string, unknown>;
+      user?: Record<string, unknown>;
+    }>({
+      method: 'POST',
+      path: `/api/swipes/incoming-likes/${swiperUserId}/respond`,
+      token,
+      body: { decision },
     }),
   notifications: async (token: string, limit = 30) =>
     apiCall<{ notifications?: Record<string, unknown>[] }>({

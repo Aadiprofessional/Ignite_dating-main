@@ -7,6 +7,7 @@ import {
   api,
   ApiError,
   AuthSession,
+  IncomingLike,
   WalletInfo,
   mapApiDiscoverProfile,
   mapApiMatch,
@@ -15,6 +16,8 @@ import {
   normalizeAccountState,
   OnboardingStatusPayload,
   SignupPayload,
+  SwipeAction,
+  SwipeResponse,
   UniversityOption,
   VerificationRequest,
 } from './api';
@@ -59,6 +62,7 @@ interface AppState {
   matches: Match[];
   discoverProfiles: Profile[];
   notifications: AppNotification[];
+  incomingLikes: IncomingLikeProfile[];
   accountState: AccountState | null;
   onboardingStatus: OnboardingStatusPayload | null;
   universities: UniversityOption[];
@@ -70,7 +74,9 @@ interface AppState {
   logout: () => void;
   hydrateFromApi: () => Promise<void>;
   refreshDiscover: (options?: { limit?: number; university_mode?: 'all' | 'same_university'; search?: string }) => Promise<void>;
-  sendSwipe: (targetId: string, action: 'like' | 'pass' | 'superlike') => Promise<void>;
+  sendSwipe: (targetId: string, action: SwipeAction | 'pass') => Promise<SwipeResponse | null>;
+  refreshIncomingLikes: (options?: { limit?: number; offset?: number }) => Promise<void>;
+  respondIncomingLike: (swiperUserId: string, decision: 'accept' | 'reject') => Promise<SwipeResponse | null>;
   refreshMatches: () => Promise<void>;
   refreshNotifications: (limit?: number) => Promise<void>;
   togglePro: () => void;
@@ -126,6 +132,22 @@ export interface AppNotification {
   isRead: boolean;
   senderAvatar?: string;
   link?: string;
+}
+
+export interface IncomingLikeProfile {
+  swipeId: string;
+  swiperId: string;
+  likedAt: Date;
+  action: string;
+  userId: string;
+  username: string;
+  name: string;
+  bio: string;
+  photos: string[];
+  city: string;
+  country: string;
+  universityName: string;
+  distanceKm: number;
 }
 
 // Mock initial user
@@ -200,6 +222,51 @@ const parseAccountState = (payload: Record<string, unknown>): AccountState | nul
   return normalizeAccountState(payload.account_state);
 };
 
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+
+const pickPayloadArray = (payload: unknown, key: string): Record<string, unknown>[] => {
+  const root = asRecord(payload);
+  const data = asRecord(root.data);
+  const result = asRecord(root.result);
+  const dataResult = asRecord(data.result);
+  const candidates = [root[key], data[key], result[key], dataResult[key]];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate as Record<string, unknown>[];
+    }
+  }
+  return [];
+};
+
+const pickSwipePayload = (payload: unknown): SwipeResponse => {
+  const root = asRecord(payload);
+  if (root.result || root.target_user || root.verification || root.user) {
+    return root as SwipeResponse;
+  }
+  const data = asRecord(root.data);
+  if (data.result || data.target_user || data.verification || data.user) {
+    return data as SwipeResponse;
+  }
+  return {};
+};
+
+const mapIncomingLike = (item: IncomingLike): IncomingLikeProfile => ({
+  swipeId: item.swipe_id,
+  swiperId: item.swiper_id,
+  likedAt: item.liked_at ? new Date(item.liked_at) : new Date(),
+  action: item.action,
+  userId: item.user_id,
+  username: item.username || '',
+  name: item.full_name || item.username || 'Ignite User',
+  bio: item.bio || '',
+  photos: Array.isArray(item.photo_urls) && item.photo_urls.length ? item.photo_urls : ['https://picsum.photos/seed/incoming-like/400/600'],
+  city: item.city || '',
+  country: item.country || '',
+  universityName: item.university_name || '',
+  distanceKm: typeof item.distance_km === 'number' ? item.distance_km : 0,
+});
+
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -209,6 +276,7 @@ export const useStore = create<AppState>()(
       matches: mockMatches,
       discoverProfiles: [],
       notifications: initialNotifications,
+      incomingLikes: [],
       accountState: null,
       onboardingStatus: null,
       universities: [],
@@ -258,7 +326,12 @@ export const useStore = create<AppState>()(
             },
           }));
         }
-        await Promise.allSettled([get().refreshDiscover({ limit: 20 }), get().refreshMatches(), get().refreshNotifications(30)]);
+        await Promise.allSettled([
+          get().refreshDiscover({ limit: 20 }),
+          get().refreshMatches(),
+          get().refreshNotifications(30),
+          get().refreshIncomingLikes({ limit: 20, offset: 0 }),
+        ]);
         await get().refreshOnboardingStatus().catch(() => null);
         await get().refreshWallet().catch(() => null);
       },
@@ -270,6 +343,7 @@ export const useStore = create<AppState>()(
           matches: [],
           discoverProfiles: [],
           notifications: [],
+          incomingLikes: [],
           accountState: null,
           onboardingStatus: null,
           universities: [],
@@ -292,7 +366,12 @@ export const useStore = create<AppState>()(
             },
             accountState: accountState || state.accountState,
           }));
-          await Promise.all([get().refreshDiscover({ limit: 20 }), get().refreshMatches(), get().refreshNotifications(30)]);
+          await Promise.all([
+            get().refreshDiscover({ limit: 20 }),
+            get().refreshMatches(),
+            get().refreshNotifications(30),
+            get().refreshIncomingLikes({ limit: 20, offset: 0 }),
+          ]);
           await get().refreshOnboardingStatus();
           await get().refreshWallet();
         } catch (error) {
@@ -309,7 +388,7 @@ export const useStore = create<AppState>()(
         if (!token) return;
         try {
           const discover = await api.discover(token, options);
-          const profiles = (discover.data?.profiles || []).map((profile) =>
+          const profiles = pickPayloadArray(discover.data, 'profiles').map((profile) =>
             mapApiDiscoverProfile(profile as Record<string, unknown>)
           );
           set({ discoverProfiles: profiles });
@@ -324,18 +403,76 @@ export const useStore = create<AppState>()(
 
       sendSwipe: async (targetId, action) => {
         const token = get().session?.accessToken;
-        if (!token) return;
-        await api.swipe(token, targetId, action);
+        if (!token) return null;
+        const response = await api.swipe(token, targetId, action);
+        const swipePayload = pickSwipePayload(response.data);
         set((state) => ({
-          discoverProfiles: state.discoverProfiles.filter((profile) => profile.id !== targetId),
+          discoverProfiles:
+            action === 'unlock_profile'
+              ? state.discoverProfiles
+              : state.discoverProfiles.filter((profile) => profile.id !== targetId),
         }));
+        if (swipePayload?.result?.is_match) {
+          await Promise.allSettled([get().refreshMatches(), get().refreshNotifications(30)]);
+        }
+        return swipePayload;
+      },
+
+      refreshIncomingLikes: async (options = { limit: 20, offset: 0 }) => {
+        const token = get().session?.accessToken;
+        if (!token) return;
+        const response = await api.incomingLikes(token, options);
+        const incomingLikes = pickPayloadArray(response.data, 'incoming_likes').map((item) =>
+          mapIncomingLike(item as unknown as IncomingLike)
+        );
+        set((state) => ({
+          incomingLikes,
+          currentUser: state.currentUser
+            ? {
+                ...state.currentUser,
+                stats: {
+                  ...state.currentUser.stats,
+                  likesReceived: incomingLikes.length,
+                },
+              }
+            : state.currentUser,
+        }));
+      },
+
+      respondIncomingLike: async (swiperUserId, decision) => {
+        const token = get().session?.accessToken;
+        if (!token) return null;
+        const response = await api.respondIncomingLike(token, swiperUserId, decision);
+        const payload = pickSwipePayload(response.data);
+        set((state) => ({
+          incomingLikes: state.incomingLikes.filter((like) => like.swiperId !== swiperUserId),
+          currentUser: state.currentUser
+            ? {
+                ...state.currentUser,
+                stats: {
+                  ...state.currentUser.stats,
+                  likesReceived: Math.max(
+                    0,
+                    state.currentUser.stats.likesReceived - 1
+                  ),
+                },
+              }
+            : state.currentUser,
+        }));
+        if (payload?.result?.is_match) {
+          await Promise.allSettled([get().refreshMatches(), get().refreshNotifications(30)]);
+        }
+        return {
+          result: payload?.result,
+          target_user: (payload?.target_user || asRecord(payload).user) as Record<string, unknown> | undefined,
+        };
       },
 
       refreshMatches: async () => {
         const token = get().session?.accessToken;
         if (!token) return;
         const matches = await api.matches(token);
-        const mapped = (matches.data?.matches || []).map((match) => mapApiMatch(match as Record<string, unknown>));
+        const mapped = pickPayloadArray(matches.data, 'matches').map((match) => mapApiMatch(match as Record<string, unknown>));
         set((state) => ({
           matches: mapped,
           currentUser: state.currentUser
@@ -354,7 +491,7 @@ export const useStore = create<AppState>()(
         const token = get().session?.accessToken;
         if (!token) return;
         const notifications = await api.notifications(token, limit);
-        const mapped = (notifications.data?.notifications || []).map((item) =>
+        const mapped = pickPayloadArray(notifications.data, 'notifications').map((item) =>
           mapApiNotification(item as Record<string, unknown>)
         );
         set({ notifications: mapped });
@@ -585,11 +722,35 @@ export const useStore = create<AppState>()(
         session: state.session,
         isPro: state.isPro,
         notifications: state.notifications,
+        incomingLikes: state.incomingLikes,
         accountState: state.accountState,
         wallet: state.wallet,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
+        if (state.session) {
+          const sessionRecord = state.session as unknown as Record<string, unknown>;
+          const normalizedAccessToken =
+            typeof sessionRecord.accessToken === 'string'
+              ? sessionRecord.accessToken
+              : typeof sessionRecord.access_token === 'string'
+                ? sessionRecord.access_token
+                : typeof sessionRecord.token === 'string'
+                  ? sessionRecord.token
+                  : '';
+          const normalizedRefreshToken =
+            typeof sessionRecord.refreshToken === 'string'
+              ? sessionRecord.refreshToken
+              : typeof sessionRecord.refresh_token === 'string'
+                ? sessionRecord.refresh_token
+                : undefined;
+          state.session = normalizedAccessToken
+            ? {
+                accessToken: normalizedAccessToken,
+                refreshToken: normalizedRefreshToken,
+              }
+            : null;
+        }
         state.notifications = state.notifications.map((notification) => ({
           ...notification,
           timestamp: notification.timestamp instanceof Date ? notification.timestamp : new Date(notification.timestamp),
@@ -597,6 +758,10 @@ export const useStore = create<AppState>()(
         state.matches = state.matches.map((match) => ({
           ...match,
           timestamp: match.timestamp instanceof Date ? match.timestamp : new Date(match.timestamp),
+        }));
+        state.incomingLikes = state.incomingLikes.map((item) => ({
+          ...item,
+          likedAt: item.likedAt instanceof Date ? item.likedAt : new Date(item.likedAt),
         }));
       },
     }

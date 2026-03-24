@@ -24,7 +24,7 @@ export function ProfileCard({ profile, style, drag, x, y }: ProfileCardProps) {
       style={style}
       whileTap={{ scale: 1.02 }}
       className={cn(
-        "relative h-[66vh] w-full max-w-[380px] overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900 shadow-2xl cursor-grab active:cursor-grabbing lg:h-[70vh] lg:max-w-[460px] xl:max-w-[520px]",
+        "relative h-[66vh] w-full max-w-[380px] overflow-hidden rounded-[20px] border border-zinc-800 bg-white shadow-2xl cursor-grab active:cursor-grabbing lg:h-[70vh] lg:max-w-[460px] xl:max-w-[520px]",
         drag ? "z-50" : "z-0"
       )}
     >

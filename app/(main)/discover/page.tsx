@@ -4,10 +4,10 @@ import { FilterDrawer } from "@/components/discover/FilterDrawer";
 import { ProfileGrid } from "@/components/discover/ProfileGrid";
 import { useStore } from "@/lib/store";
 import { Search, SlidersHorizontal } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function DiscoverPage() {
-  const { discoverProfiles, refreshDiscover } = useStore();
+  const { discoverProfiles, refreshDiscover, sendSwipe } = useStore();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeChip, setActiveChip] = useState("Near Me");
   const [searchQuery, setSearchQuery] = useState("");
@@ -15,22 +15,26 @@ export default function DiscoverPage() {
   const filterChips = ["Near Me", "New", "Online", "Verified", "Popular", "Recently Active"];
 
   useEffect(() => {
-    if (discoverProfiles.length > 0) return;
     void refreshDiscover({ limit: 24 });
-  }, [discoverProfiles.length, refreshDiscover]);
+  }, [refreshDiscover]);
 
-  const profiles = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    if (!normalizedQuery) return discoverProfiles;
-    return discoverProfiles.filter((profile) => {
-      const byName = profile.name.toLowerCase().includes(normalizedQuery);
-      const byInterest = profile.interests.some((interest) => interest.toLowerCase().includes(normalizedQuery));
-      return byName || byInterest;
-    });
-  }, [discoverProfiles, searchQuery]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void refreshDiscover({
+        limit: 24,
+        university_mode: "all",
+        search: searchQuery.trim() || undefined,
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, refreshDiscover]);
 
   const handleLoadMore = () => {
-    void refreshDiscover({ limit: 48, search: searchQuery || undefined });
+    void refreshDiscover({ limit: 48, university_mode: "all", search: searchQuery.trim() || undefined });
+  };
+
+  const handleLike = async (profileId: string) => {
+    await sendSwipe(profileId, "like");
   };
 
   return (
@@ -97,7 +101,7 @@ export default function DiscoverPage() {
             </div>
           </div>
         </aside>
-        <ProfileGrid profiles={profiles} onLoadMore={handleLoadMore} />
+        <ProfileGrid profiles={discoverProfiles} onLoadMore={handleLoadMore} onLike={handleLike} />
       </main>
       {/* Filter Drawer */}
       <FilterDrawer isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} />
