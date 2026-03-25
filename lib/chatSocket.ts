@@ -4,7 +4,7 @@ import { io, Socket } from "socket.io-client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const CHAT_SOCKET_URL = process.env.NEXT_PUBLIC_CHAT_SOCKET_URL;
-const CHAT_SOCKET_PATH = process.env.NEXT_PUBLIC_CHAT_SOCKET_PATH || "/chat";
+const CHAT_SOCKET_PATH = process.env.NEXT_PUBLIC_CHAT_SOCKET_PATH || "/api/chat";
 const CHAT_SOCKET_TRANSPORTS = process.env.NEXT_PUBLIC_CHAT_SOCKET_TRANSPORTS;
 
 const resolveSocketBase = () => {
@@ -23,7 +23,7 @@ const resolveSocketBase = () => {
 };
 
 const resolveSocketPath = () => {
-  if (!CHAT_SOCKET_PATH) return "/chat";
+  if (!CHAT_SOCKET_PATH) return "/api/chat";
   return CHAT_SOCKET_PATH.startsWith("/") ? CHAT_SOCKET_PATH : `/${CHAT_SOCKET_PATH}`;
 };
 
@@ -42,7 +42,7 @@ const resolveTransports = () => {
       .filter((item): item is "websocket" | "polling" => item === "websocket" || item === "polling");
     if (parsed.length) return parsed;
   }
-  return ["websocket"];
+  return ["websocket", "polling"];
 };
 
 export type ChatSocket = Socket;
