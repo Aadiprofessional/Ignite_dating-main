@@ -7,9 +7,12 @@ import Link from "next/link";
 interface ChatHeaderProps {
   match: Match;
   onProfileClick?: () => void;
+  onStartCall?: () => void;
+  callActive?: boolean;
+  subtitle?: string;
 }
 
-export function ChatHeader({ match, onProfileClick }: ChatHeaderProps) {
+export function ChatHeader({ match, onProfileClick, onStartCall, callActive, subtitle }: ChatHeaderProps) {
   return (
     <div className="z-20 flex shrink-0 items-center justify-between border-b border-zinc-900/50 bg-[#080808]/90 p-4 backdrop-blur-md">
       <Link href="/matches" className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors">
@@ -28,15 +31,18 @@ export function ChatHeader({ match, onProfileClick }: ChatHeaderProps) {
           </div>
           <div className="text-center">
             <h2 className="font-bold text-white text-lg leading-tight">{match.name}</h2>
-            {match.online && (
-              <span className="text-[10px] font-mono text-green-500 block leading-none">Online</span>
-            )}
+            <span className={`text-[10px] font-mono block leading-none ${match.online ? "text-green-500" : "text-zinc-500"}`}>
+              {subtitle || (match.online ? "Online" : "Offline")}
+            </span>
           </div>
         </div>
       </div>
 
       <div className="flex gap-2">
-        <button className="p-2 text-zinc-400 hover:text-white transition-colors">
+        <button
+          onClick={onStartCall}
+          className={`p-2 transition-colors ${callActive ? "text-crimson" : "text-zinc-400 hover:text-white"}`}
+        >
           <Video size={24} />
         </button>
         <button className="p-2 text-zinc-400 hover:text-white transition-colors">

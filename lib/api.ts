@@ -180,6 +180,60 @@ export interface IncomingLike {
   distance_km?: number;
 }
 
+export type ChatMessageType = 'TEXT' | 'IMAGE' | 'GIF' | 'VIDEO';
+
+export interface ChatListItem {
+  match_id: string;
+  conversation_id?: string;
+  other_user_id?: string;
+  other_username?: string;
+  other_full_name?: string;
+  other_photo_urls?: string[];
+  last_message_id?: string;
+  last_message_sender_id?: string;
+  last_message_type?: ChatMessageType;
+  last_message_content?: string;
+  last_message_media_url?: string | null;
+  last_message_created_at?: string;
+  unread_count?: number;
+}
+
+export interface ChatMessageReaction {
+  user_id?: string;
+  emoji?: string;
+}
+
+export interface ChatMessageRecord {
+  id: string;
+  match_id?: string;
+  conversation_id?: string;
+  sender_id?: string;
+  type?: ChatMessageType;
+  content?: string;
+  media_url?: string;
+  metadata?: Record<string, unknown> | null;
+  reply_to_message_id?: string | null;
+  reactions?: ChatMessageReaction[];
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ReplySuggestionItem {
+  tone?: string;
+  reply: string;
+}
+
+export interface ReplySuggestionsResponse {
+  match_id?: string;
+  conversation_id?: string;
+  trigger_message_id?: string;
+  analysis?: string;
+  suggestions?: ReplySuggestionItem[];
+  model?: string;
+  generated_at?: string;
+}
+
 interface ApiCallOptions {
   method?: HttpMethod;
   path: string;
@@ -517,8 +571,10 @@ export const mapApiMatch = (item: Record<string, unknown>): Match => {
   const matchedAt = pickString((item as { matched_at?: string; created_at?: string }).matched_at) || pickString((item as { created_at?: string }).created_at);
   const timestamp = matchedAt ? new Date(matchedAt) : new Date();
 
+  const matchId = pickString((item as { id?: string; match_id?: string }).id || (item as { match_id?: string }).match_id);
+  const otherUserId = pickString((item as { user_id?: string }).user_id || profile.user_id || profile.id);
   return {
-    id: pickString((item as { user_id?: string }).user_id || profile.user_id || profile.id || item.id, crypto.randomUUID()),
+    id: matchId || otherUserId || crypto.randomUUID(),
     name: `${firstName} ${lastName}`.trim() || pickString(profile.full_name) || pickString(profile.username) || pickString(profile.name, 'New Match'),
     avatar: images[0] || 'https://picsum.photos/seed/ignite-match/100/100',
     isNew: true,
@@ -526,6 +582,41 @@ export const mapApiMatch = (item: Record<string, unknown>): Match => {
     lastMessage: 'You matched on Ignite',
     timestamp,
     unreadCount: 0,
+    isVerified: false,
+    matchId: matchId || undefined,
+    otherUserId: otherUserId || undefined,
+    conversationId: pickString((item as { conversation_id?: string }).conversation_id) || undefined,
+    otherFullName: pickString(profile.full_name) || undefined,
+    username: pickString(profile.username) || undefined,
+    photoUrls: images,
+  };
+};
+
+export const mapApiChatListItem = (item: ChatListItem): Match => {
+  const name = pickString(item.other_full_name) || pickString(item.other_username, 'Ignite User');
+  const lastMessage =
+    pickString(item.last_message_content) ||
+    pickString(item.last_message_media_url) ||
+    (pickString(item.last_message_type) ? `${pickString(item.last_message_type)} message` : 'Start conversation');
+  const createdAt = pickString(item.last_message_created_at);
+  const photoUrls = pickArray<string>(item.other_photo_urls).filter(Boolean);
+  const avatar = photoUrls[0] || 'https://picsum.photos/seed/ignite-chat/100/100';
+
+  return {
+    id: pickString(item.match_id, crypto.randomUUID()),
+    matchId: pickString(item.match_id) || undefined,
+    conversationId: pickString(item.conversation_id) || undefined,
+    otherUserId: pickString(item.other_user_id) || undefined,
+    username: pickString(item.other_username) || undefined,
+    otherFullName: pickString(item.other_full_name) || undefined,
+    photoUrls,
+    name,
+    avatar,
+    isNew: pickNumber(item.unread_count, 0) > 0,
+    online: false,
+    lastMessage,
+    timestamp: createdAt ? new Date(createdAt) : new Date(),
+    unreadCount: pickNumber(item.unread_count, 0),
     isVerified: false,
   };
 };
@@ -800,6 +891,14 @@ export const api = {
       fallbackBucket: 'profile-photos',
       uploadErrorMessage: 'Failed to upload profile photo.',
     }),
+  uploadChatMedia: async (file: File, userId: string) =>
+    uploadToSupabaseStorage({
+      file,
+      userId,
+      bucketEnvKey: 'NEXT_PUBLIC_SUPABASE_PHOTOS_BUCKET',
+      fallbackBucket: 'profile-photos',
+      uploadErrorMessage: 'Failed to upload chat media.',
+    }),
   createEvent: async (
     token: string,
     body: {
@@ -1003,6 +1102,86 @@ export const api = {
       path: '/api/matches',
       token,
     }),
+  chats: async (token: string, options?: { limit?: number; offset?: number }) => {
+    const params = new URLSearchParams({
+      limit: String(options?.limit ?? 30),
+      offset: String(options?.offset ?? 0),
+    });
+    return apiCall<{ chats?: ChatListItem[] }>({
+      path: `/api/chats?${params.toString()}`,
+      token,
+    });
+  },
+  sendMatchMessage: async (
+    token: string,
+    matchId: string,
+    body:
+      | { type: 'TEXT'; content: string; reply_to_message_id?: string }
+      | {
+          type: Exclude<ChatMessageType, 'TEXT'>;
+          media_url: string;
+          metadata?: Record<string, unknown>;
+          reply_to_message_id?: string;
+          content?: string;
+        }
+  ) =>
+    apiCall<{ message?: ChatMessageRecord }>({
+      method: 'POST',
+      path: `/api/matches/${matchId}/messages`,
+      token,
+      body,
+    }),
+  matchMessages: async (token: string, matchId: string, options?: { limit?: number; cursor?: string }) => {
+    const params = new URLSearchParams({
+      limit: String(options?.limit ?? 30),
+    });
+    if (options?.cursor) {
+      params.set('cursor', options.cursor);
+    }
+    return apiCall<{ messages?: ChatMessageRecord[]; next_cursor?: string | null }>({
+      path: `/api/matches/${matchId}/messages?${params.toString()}`,
+      token,
+    });
+  },
+  toggleMessageReaction: async (token: string, messageId: string, emoji: string) =>
+    apiCall<{ message?: ChatMessageRecord; reactions?: ChatMessageReaction[] }>({
+      method: 'POST',
+      path: `/api/messages/${messageId}/react`,
+      token,
+      body: { emoji },
+    }),
+  deleteMessage: async (token: string, messageId: string, scope: 'me' | 'everyone') =>
+    apiCall<Record<string, unknown>>({
+      method: 'DELETE',
+      path: `/api/messages/${messageId}?scope=${scope}`,
+      token,
+    }),
+  markMatchRead: async (token: string, matchId: string, lastReadMessageId: string) =>
+    apiCall<Record<string, unknown>>({
+      method: 'POST',
+      path: `/api/matches/${matchId}/read`,
+      token,
+      body: { lastReadMessageId },
+    }),
+  matchUnreadCount: async (token: string, matchId: string) =>
+    apiCall<{ unread_count?: number; count?: number }>({
+      path: `/api/matches/${matchId}/unread-count`,
+      token,
+    }),
+  matchReplySuggestions: async (
+    token: string,
+    matchId: string,
+    options?: { force?: boolean; triggerMessageId?: string }
+  ) => {
+    const params = new URLSearchParams();
+    if (options?.force) params.set('force', 'true');
+    if (options?.triggerMessageId) params.set('trigger_message_id', options.triggerMessageId);
+    const query = params.toString();
+    return apiCall<ReplySuggestionsResponse>({
+      path: `/api/matches/${matchId}/reply-suggestions${query ? `?${query}` : ''}`,
+      token,
+    });
+  },
   report: async (token: string, reportedId: string, reason: string, details?: string) =>
     apiCall<Record<string, unknown>>({
       method: 'POST',

@@ -7,9 +7,11 @@ import {
   api,
   ApiError,
   AuthSession,
+  ChatListItem,
   IncomingLike,
   WalletInfo,
   mapApiDiscoverProfile,
+  mapApiChatListItem,
   mapApiMatch,
   mapApiNotification,
   mapApiUserToProfile,
@@ -471,8 +473,14 @@ export const useStore = create<AppState>()(
       refreshMatches: async () => {
         const token = get().session?.accessToken;
         if (!token) return;
-        const matches = await api.matches(token);
-        const mapped = pickPayloadArray(matches.data, 'matches').map((match) => mapApiMatch(match as Record<string, unknown>));
+        let mapped = [] as Match[];
+        try {
+          const chats = await api.chats(token, { limit: 50, offset: 0 });
+          mapped = pickPayloadArray(chats.data, 'chats').map((chat) => mapApiChatListItem(chat as unknown as ChatListItem));
+        } catch {
+          const matches = await api.matches(token);
+          mapped = pickPayloadArray(matches.data, 'matches').map((match) => mapApiMatch(match as Record<string, unknown>));
+        }
         set((state) => ({
           matches: mapped,
           currentUser: state.currentUser

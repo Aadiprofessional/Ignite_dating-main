@@ -1,5 +1,11 @@
 export interface Match {
   id: string;
+  matchId?: string;
+  conversationId?: string;
+  otherUserId?: string;
+  username?: string;
+  otherFullName?: string;
+  photoUrls?: string[];
   name: string;
   avatar: string;
   isNew: boolean;
