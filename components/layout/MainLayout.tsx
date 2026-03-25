@@ -60,9 +60,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
       socket.connect();
     }
     return () => {
-      if (!session?.accessToken) {
-        disconnectChatSocket();
-      }
+      disconnectChatSocket();
     };
   }, [isHydrated, session?.accessToken]);
 

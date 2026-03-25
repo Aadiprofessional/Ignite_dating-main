@@ -10,5 +10,14 @@
   },
   "observability": {
     "enabled": true
+  },
+  "vars": {
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzY4NzA2MCwiZXhwIjo0OTI5MzYwNjYwLCJyb2xlIjoiYW5vbiJ9.ZlpvSFklLUBvREC6JoyCFH8dG6n93xzisS0uF8swv7U",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://supabase.hkmeetup.space",
+    "NODE_ENV": "development",
+    "NEXT_PUBLIC_API_BASE_URL": "https://server.hkmeetup.space",
+    "NEXT_PUBLIC_CHAT_SOCKET_URL": "https://server.hkmeetup.space",
+    "NEXT_PUBLIC_CHAT_SOCKET_PATH": "/chat",
+    "NEXT_PUBLIC_CHAT_SOCKET_TRANSPORTS": "websocket"
   }
 }
