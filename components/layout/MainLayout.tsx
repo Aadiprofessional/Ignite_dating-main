@@ -96,7 +96,9 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   const hideNavRoutes = ["/messages/"];
   const showNav = !hideNavRoutes.some((route) => pathname.includes(route) && pathname !== "/messages");
-  const showRightPanel = !pathname.startsWith("/events");
+  const isMessagesRoute = pathname.startsWith("/messages");
+  const isMessageDetailRoute = pathname.startsWith("/messages/");
+  const showRightPanel = !pathname.startsWith("/events") && !pathname.startsWith("/messages");
   const unreadMatches = matches.filter((match) => match.isNew).length;
   const unreadNotifications = notifications.filter((notification) => !notification.isRead).length;
   const navItems = [
@@ -233,7 +235,12 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="min-w-0 lg:h-full lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-white/10 lg:bg-[#0B0B0B] lg:shadow-[0_20px_80px_rgba(0,0,0,0.28)]">
+      <div
+        className={cn(
+          "min-w-0 lg:h-full lg:rounded-3xl lg:border lg:border-white/10 lg:bg-[#0B0B0B] lg:shadow-[0_20px_80px_rgba(0,0,0,0.28)]",
+          isMessagesRoute ? "lg:overflow-hidden" : "lg:overflow-y-auto"
+        )}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
@@ -241,7 +248,10 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="pb-24 lg:pb-0"
+            className={cn(
+              isMessageDetailRoute ? "h-[100dvh] overflow-hidden pb-0 lg:h-full" : "pb-24 lg:pb-0",
+              isMessagesRoute ? "lg:h-full lg:overflow-hidden" : ""
+            )}
           >
             {children}
           </motion.div>

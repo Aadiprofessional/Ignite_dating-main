@@ -8,6 +8,7 @@ import {
   ApiError,
   AuthSession,
   ChatListItem,
+  createClientId,
   IncomingLike,
   WalletInfo,
   mapApiDiscoverProfile,
@@ -657,11 +658,11 @@ export const useStore = create<AppState>()(
         return universities;
       },
       uploadVerificationDocument: async (file) => {
-        const currentUserId = get().currentUser?.id || crypto.randomUUID();
+        const currentUserId = get().currentUser?.id || createClientId();
         return api.uploadVerificationDocument(file, currentUserId);
       },
       uploadProfilePhoto: async (file) => {
-        const currentUserId = get().currentUser?.id || crypto.randomUUID();
+        const currentUserId = get().currentUser?.id || createClientId();
         return api.uploadProfilePhoto(file, currentUserId);
       },
       submitOnboardingAndVerification: async (payload) => {

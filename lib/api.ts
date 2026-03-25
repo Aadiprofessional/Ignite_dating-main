@@ -310,6 +310,13 @@ const safeJson = (raw: string) => {
 const pickString = (value: unknown, fallback = '') => (typeof value === 'string' ? value : fallback);
 const pickNumber = (value: unknown, fallback = 0) => (typeof value === 'number' ? value : fallback);
 const pickArray = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+export const createClientId = () => {
+  const runtimeCrypto = typeof globalThis !== 'undefined' ? (globalThis as { crypto?: Crypto }).crypto : undefined;
+  if (runtimeCrypto && typeof runtimeCrypto.randomUUID === 'function') {
+    return runtimeCrypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
+};
 
 const resolveAccessStatus = (state: {
   access_status?: unknown;
@@ -378,7 +385,7 @@ const getSupabaseConfig = (bucketEnvKey: string, fallbackBucket: string) => {
 const buildStorageObjectPath = (userId: string, fileName: string) => {
   const extension = fileName.includes('.') ? fileName.split('.').pop() || 'bin' : 'bin';
   const sanitizedUserId = (userId || 'user').replace(/[^a-zA-Z0-9_-]/g, '');
-  return `${sanitizedUserId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+  return `${sanitizedUserId}/${Date.now()}-${createClientId()}.${extension}`;
 };
 
 const uploadToSupabaseStorage = async (options: {
@@ -519,7 +526,7 @@ export const mapApiDiscoverProfile = (item: Record<string, unknown>): Profile =>
   const verification = (item.verification as Record<string, unknown> | undefined) || {};
 
   return {
-    id: pickString((item as { user_id?: string }).user_id || profile.user_id || profile.id || item.id, crypto.randomUUID()),
+    id: pickString((item as { user_id?: string }).user_id || profile.user_id || profile.id || item.id, createClientId()),
     name,
     username: pickString(profile.username),
     age: calcAge(pickString(profile.birth_date) || pickString(profile.birthdate)),
@@ -574,7 +581,7 @@ export const mapApiMatch = (item: Record<string, unknown>): Match => {
   const matchId = pickString((item as { id?: string; match_id?: string }).id || (item as { match_id?: string }).match_id);
   const otherUserId = pickString((item as { user_id?: string }).user_id || profile.user_id || profile.id);
   return {
-    id: matchId || otherUserId || crypto.randomUUID(),
+    id: matchId || otherUserId || createClientId(),
     name: `${firstName} ${lastName}`.trim() || pickString(profile.full_name) || pickString(profile.username) || pickString(profile.name, 'New Match'),
     avatar: images[0] || 'https://picsum.photos/seed/ignite-match/100/100',
     isNew: true,
@@ -603,7 +610,7 @@ export const mapApiChatListItem = (item: ChatListItem): Match => {
   const avatar = photoUrls[0] || 'https://picsum.photos/seed/ignite-chat/100/100';
 
   return {
-    id: pickString(item.match_id, crypto.randomUUID()),
+    id: pickString(item.match_id, createClientId()),
     matchId: pickString(item.match_id) || undefined,
     conversationId: pickString(item.conversation_id) || undefined,
     otherUserId: pickString(item.other_user_id) || undefined,
@@ -659,7 +666,7 @@ export const mapApiNotification = (item: Record<string, unknown>): AppNotificati
   };
 
   return {
-    id: pickString((item as { id?: string }).id, crypto.randomUUID()),
+    id: pickString((item as { id?: string }).id, createClientId()),
     type: mappedType,
     title: pickString(item.title) || fallbackTitleByType[mappedType],
     message: pickString(item.body) || pickString(item.message) || fallbackMessageByType[mappedType],

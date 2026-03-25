@@ -9,7 +9,7 @@ Changes vs original:
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CustomMap from "@/components/CustomMap";
-import { api, EventJoinRequest, EventRecord } from "@/lib/api";
+import { api, createClientId, EventJoinRequest, EventRecord } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { CalendarDays, Check, ChevronLeft, ChevronRight, Loader2, LocateFixed, MapPin, Navigation, Plus, RefreshCw, Search, SlidersHorizontal, Sparkles, Trash2, Users, Wifi } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -603,7 +603,7 @@ export function EventsSection() {
     setIsCreatingEvent(true);
     try {
       setIsUploadingImage(true);
-      const uploadedImageUrl = await api.uploadProfilePhoto(createImageFile, currentUser?.id || crypto.randomUUID());
+      const uploadedImageUrl = await api.uploadProfilePhoto(createImageFile, currentUser?.id || createClientId());
       setIsUploadingImage(false);
       await api.createEvent(token, {
         title: createForm.title.trim(),

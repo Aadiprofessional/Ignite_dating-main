@@ -1,5 +1,5 @@
-import MatchesPage from "../matches/page";
+import { MessagesInboxClient } from "@/components/messages/MessagesInboxClient";
 
 export default function MessagesPage() {
-  return <MatchesPage />;
+  return <MessagesInboxClient />;
 }

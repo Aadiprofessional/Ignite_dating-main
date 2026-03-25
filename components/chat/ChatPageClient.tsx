@@ -9,21 +9,17 @@ import { api, ApiError, ChatMessageRecord, ChatMessageReaction, ReplySuggestionI
 import { connectChatSocket } from "@/lib/chatSocket";
 import { useStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { PhoneOff, PhoneIncoming, PhoneCall, X } from "lucide-react";
 import type { Socket } from "socket.io-client";
 
 interface ChatPageClientProps {
   id: string;
+  layout?: "standalone" | "embedded";
 }
 
-interface StoredReplySuggestions {
-  triggerMessageId: string;
-  suggestions: ReplySuggestionItem[];
-}
-
-export function ChatPageClient({ id }: ChatPageClientProps) {
+export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProps) {
   const router = useRouter();
   const { matches, blockUser, reportUser, session, currentUser, refreshMatches } = useStore();
   const match = matches.find((m) => m.id === id);
@@ -67,37 +63,10 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
   const refreshInFlightRef = useRef(false);
   const lastReadSentRef = useRef<string | null>(null);
   const myUserId = currentUser?.id || "";
-  const suggestionsStorageKey = `reply-suggestions:${id}`;
-
-  const persistReplySuggestions = useCallback(
-    (triggerMessageId: string, suggestions: ReplySuggestionItem[]) => {
-      if (typeof window === "undefined") return;
-      const payload: StoredReplySuggestions = {
-        triggerMessageId,
-        suggestions: suggestions.slice(0, 3),
-      };
-      window.localStorage.setItem(suggestionsStorageKey, JSON.stringify(payload));
-    },
-    [suggestionsStorageKey]
+  const latestIncomingMessageId = useMemo(
+    () => [...messages].reverse().find((message) => message.senderId === "other")?.id || null,
+    [messages]
   );
-
-  const loadStoredReplySuggestions = useCallback((): StoredReplySuggestions | null => {
-    if (typeof window === "undefined") return null;
-    const raw = window.localStorage.getItem(suggestionsStorageKey);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw) as StoredReplySuggestions;
-      if (!parsed.triggerMessageId || !Array.isArray(parsed.suggestions)) return null;
-      return {
-        triggerMessageId: parsed.triggerMessageId,
-        suggestions: parsed.suggestions
-          .filter((item) => Boolean(item && typeof item.reply === "string" && item.reply.trim()))
-          .slice(0, 3),
-      };
-    } catch {
-      return null;
-    }
-  }, [suggestionsStorageKey]);
 
   const fetchReplySuggestions = useCallback(
     async (triggerMessageId: string, force = false) => {
@@ -118,12 +87,10 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
         if (!suggestionList.length) {
           setReplySuggestions([]);
           setSuggestionsTriggerMessageId(triggerMessageId);
-          persistReplySuggestions(triggerMessageId, []);
           return;
         }
         setReplySuggestions(suggestionList);
         setSuggestionsTriggerMessageId(triggerMessageId);
-        persistReplySuggestions(triggerMessageId, suggestionList);
       } catch (suggestionError) {
         const message = suggestionError instanceof Error ? suggestionError.message : "Failed to load suggestions";
         setSuggestionsError(message);
@@ -132,7 +99,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
         suggestionsFetchRef.current = null;
       }
     },
-    [id, persistReplySuggestions, session?.accessToken]
+    [id, session?.accessToken]
   );
 
   const stopIncomingRingtone = useCallback(() => {
@@ -195,6 +162,14 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
     []
   );
 
+  const createClientId = useCallback(() => {
+    const runtimeCrypto = typeof globalThis !== "undefined" ? (globalThis as { crypto?: Crypto }).crypto : undefined;
+    if (runtimeCrypto && typeof runtimeCrypto.randomUUID === "function") {
+      return runtimeCrypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }, []);
+
   const normalizeMessage = useCallback(
     (item: ChatMessageRecord): ChatUiMessage => {
       const senderId = item.sender_id || "other";
@@ -206,18 +181,22 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
       const status: ChatUiMessage["status"] =
         statusRaw === "uploading" ? "uploading" : statusRaw === "read" ? "read" : statusRaw === "delivered" ? "delivered" : "sent";
       return {
-        id: item.id || crypto.randomUUID(),
+        id: item.id || createClientId(),
         senderId: isMeSender ? "me" : "other",
         text: item.content || "",
         timestamp: item.created_at ? new Date(item.created_at) : new Date(),
         status,
         type: mappedType,
         mediaUrl: item.media_url || undefined,
+        mediaKind:
+          mappedType === "video" && item.metadata && typeof item.metadata === "object"
+            ? ((item.metadata.mediaKind as string) === "audio" ? "audio" : "video")
+            : undefined,
         replyToMessageId: item.reply_to_message_id || undefined,
         reactionEmojis: parseReactionEmojis(item.reactions),
       };
     },
-    [myUserId, parseReactionEmojis]
+    [createClientId, myUserId, parseReactionEmojis]
   );
 
   const fetchMessages = useCallback(
@@ -724,22 +703,17 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
   }, [id, messages, session?.accessToken]);
 
   useEffect(() => {
-    const latestIncoming = [...messages].reverse().find((message) => message.senderId === "other");
-    if (!latestIncoming) {
+    if (!latestIncomingMessageId) {
       setReplySuggestions([]);
       setSuggestionsTriggerMessageId(null);
       return;
     }
-    if (latestIncoming.id === suggestionsTriggerMessageId) return;
-    const stored = loadStoredReplySuggestions();
-    if (stored && stored.triggerMessageId === latestIncoming.id) {
-      setReplySuggestions(stored.suggestions.slice(0, 3));
-      setSuggestionsTriggerMessageId(stored.triggerMessageId);
+    if (suggestionsTriggerMessageId && suggestionsTriggerMessageId !== latestIncomingMessageId) {
+      setReplySuggestions([]);
       setSuggestionsError(null);
-      return;
+      setSuggestionsTriggerMessageId(null);
     }
-    void fetchReplySuggestions(latestIncoming.id);
-  }, [fetchReplySuggestions, loadStoredReplySuggestions, messages, suggestionsTriggerMessageId]);
+  }, [latestIncomingMessageId, suggestionsTriggerMessageId]);
 
   const isSocketTyping = typingUsers.size > 0;
 
@@ -864,7 +838,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
       const trimmedText = text.trim();
       if (!token || !trimmedText) return;
       const replyToMessageId = replyingTo?.id;
-      const optimisticId = `temp-${crypto.randomUUID()}`;
+      const optimisticId = `temp-${createClientId()}`;
       const optimisticMessage: ChatUiMessage = {
         id: optimisticId,
         senderId: "me",
@@ -908,7 +882,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
         }
       })();
     },
-    [appendOrUpdateMessage, fetchMessages, id, normalizeMessage, replyingTo?.id, session?.accessToken]
+    [appendOrUpdateMessage, createClientId, fetchMessages, id, normalizeMessage, replyingTo?.id, session?.accessToken]
   );
 
   const sendMedia = useCallback(
@@ -920,10 +894,11 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
         return;
       }
       const replyToMessageId = replyingTo?.id;
-      const optimisticId = `temp-${crypto.randomUUID()}`;
+      const optimisticId = `temp-${createClientId()}`;
       const previewUrl = URL.createObjectURL(payload.file);
       const optimisticType: ChatUiMessage["type"] =
         payload.type === "IMAGE" ? "image" : payload.type === "GIF" ? "gif" : "video";
+      const isAudioUpload = payload.file.type.startsWith("audio/");
       const optimisticMessage: ChatUiMessage = {
         id: optimisticId,
         senderId: "me",
@@ -932,6 +907,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
         status: "uploading",
         type: optimisticType,
         mediaUrl: previewUrl,
+        mediaKind: isAudioUpload ? "audio" : optimisticType,
         replyToMessageId: replyToMessageId || undefined,
       };
       appendOrUpdateMessage(optimisticMessage);
@@ -941,11 +917,17 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
         try {
           const uploadedUrl = await api.uploadChatMedia(payload.file, myUserId);
           const dimensions = await readMediaMetadata(payload.file, payload.type);
+          const metadata =
+            isAudioUpload
+              ? { mediaKind: "audio" }
+              : dimensions
+              ? { ...dimensions, mediaKind: optimisticType }
+              : { mediaKind: optimisticType };
           const response = await api.sendMatchMessage(token, id, {
             type: payload.type,
             media_url: uploadedUrl,
             content: payload.content?.trim() || undefined,
-            metadata: dimensions || undefined,
+            metadata,
             reply_to_message_id: replyToMessageId,
           });
           const message = response.data?.message;
@@ -974,7 +956,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
         }
       })();
     },
-    [appendOrUpdateMessage, fetchMessages, id, myUserId, normalizeMessage, readMediaMetadata, replyingTo?.id, session?.accessToken]
+    [appendOrUpdateMessage, createClientId, fetchMessages, id, myUserId, normalizeMessage, readMediaMetadata, replyingTo?.id, session?.accessToken]
   );
 
   const toggleReaction = useCallback(
@@ -1041,7 +1023,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
   };
 
   return (
-    <div className="h-[100dvh] bg-[#0A0A0A] flex flex-col relative overflow-hidden">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#0A0A0A]">
       <div className="absolute inset-0 pointer-events-none z-0 opacity-50" style={noiseBg} />
       <ChatHeader
         match={match}
@@ -1067,7 +1049,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
           const distanceToBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
           shouldStickToBottomRef.current = distanceToBottom < 120;
         }}
-        className="z-10 min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-4 pt-4 pb-4"
+        className="z-10 min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-4 pb-4 pt-4 touch-pan-y"
       >
         <div className="flex items-center justify-center gap-3">
           {nextCursor && (
@@ -1117,47 +1099,61 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
         )}
       </div>
 
-      <div className="z-20 border-t border-zinc-900 bg-[#080808]/95 px-3 pb-3 pt-2">
+      <div className="z-20 shrink-0 border-t border-zinc-900 bg-[#080808]/95 px-3 pb-3 pt-2">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-[11px] font-mono uppercase tracking-wide text-zinc-500">Quick replies</p>
           {suggestionsLoading && <span className="text-[11px] text-zinc-500">Generating...</span>}
         </div>
+        <button
+          disabled={!latestIncomingMessageId || suggestionsLoading || !session?.accessToken}
+          onClick={() => {
+            if (!latestIncomingMessageId) return;
+            void fetchReplySuggestions(latestIncomingMessageId, true);
+          }}
+          className="mb-2 w-full rounded-xl border border-fuchsia-500/40 bg-fuchsia-500/10 px-3 py-2 text-left text-sm font-semibold text-fuchsia-100 transition-colors hover:bg-fuchsia-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Generate quick reply -1 coins
+        </button>
         {suggestionsError && <p className="mb-2 text-[11px] text-crimson">{suggestionsError}</p>}
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-          {replySuggestions.slice(0, 3).map((suggestion, index) => (
-            <button
-              key={`${suggestionsTriggerMessageId || "suggestion"}-${index}`}
-              onClick={() => setComposerText(suggestion.reply)}
-              className="rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-left transition-colors hover:border-fuchsia-500/40 hover:bg-zinc-800"
-            >
-              <p className="mb-1 text-[10px] font-mono uppercase tracking-wide text-fuchsia-300/80">
-                {suggestion.tone || "suggestion"}
-              </p>
-              <p className="text-xs text-zinc-200">{suggestion.reply}</p>
-            </button>
-          ))}
-        </div>
+        {replySuggestions.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:overflow-visible md:pb-0">
+            {replySuggestions.slice(0, 3).map((suggestion, index) => (
+              <button
+                key={`${suggestionsTriggerMessageId || "suggestion"}-${index}`}
+                onClick={() => setComposerText(suggestion.reply)}
+                className="min-w-[220px] rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-left transition-colors hover:border-fuchsia-500/40 hover:bg-zinc-800 md:min-w-0"
+              >
+                <p className="mb-1 text-[10px] font-mono uppercase tracking-wide text-fuchsia-300/80">
+                  {suggestion.tone || "suggestion"}
+                </p>
+                <p className="text-xs text-zinc-200">{suggestion.reply}</p>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <ChatInput
-        disabled={!session?.accessToken}
-        value={composerText}
-        onValueChange={setComposerText}
-        onSendText={sendText}
-        onSendMedia={sendMedia}
-        onTypingStart={typingStart}
-        onTypingStop={typingStop}
-        replyToMessage={
-          replyingTo && replyingTo.type !== "notification"
-            ? {
-                id: replyingTo.id,
-                text: replyingTo.text,
-                type: replyingTo.type,
-              }
-            : undefined
-        }
-        onCancelReply={() => setReplyingTo(null)}
-      />
+      <div className="shrink-0">
+        <ChatInput
+          disabled={!session?.accessToken}
+          value={composerText}
+          onValueChange={setComposerText}
+          onSendText={sendText}
+          onSendMedia={sendMedia}
+          onTypingStart={typingStart}
+          onTypingStop={typingStop}
+          replyToMessage={
+            replyingTo && replyingTo.type !== "notification"
+              ? {
+                  id: replyingTo.id,
+                  text: replyingTo.text,
+                  type: replyingTo.type,
+                }
+              : undefined
+          }
+          onCancelReply={() => setReplyingTo(null)}
+        />
+      </div>
 
       <AnimatePresence>
         {callState === "incoming" && !showCallOverlay && (
@@ -1204,7 +1200,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
             onUnmatch={() => {
               void blockUser(match.otherUserId || match.id);
               setShowMiniProfile(false);
-              router.push("/matches");
+              router.push(layout === "embedded" ? "/messages" : "/matches");
             }}
             onReport={() => {
               void reportUser(match.otherUserId || match.id, "abuse", "Reported from mini profile drawer");
