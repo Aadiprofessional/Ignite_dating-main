@@ -42,6 +42,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOnline, setIsOnline] = useState(Boolean(match?.online));
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -64,6 +65,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
   const ringtoneIntervalRef = useRef<number | null>(null);
   const suggestionsFetchRef = useRef<string | null>(null);
   const refreshInFlightRef = useRef(false);
+  const lastReadSentRef = useRef<string | null>(null);
   const myUserId = currentUser?.id || "";
   const suggestionsStorageKey = `reply-suggestions:${id}`;
 
@@ -441,6 +443,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
     setSuggestionsTriggerMessageId(null);
     setSuggestionsError(null);
     suggestionsFetchRef.current = null;
+    lastReadSentRef.current = null;
   }, [id]);
 
   useEffect(() => {
@@ -449,21 +452,31 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
   }, [match, refreshMatches, session?.accessToken]);
 
   useEffect(() => {
-    if (!session?.accessToken) return;
+    if (!session?.accessToken || isSocketConnected) return;
     const interval = window.setInterval(() => {
       if (document.hidden) return;
       void refreshLatestMessages();
-    }, 1500);
+    }, 5000);
     return () => {
       window.clearInterval(interval);
     };
-  }, [refreshLatestMessages, session?.accessToken]);
+  }, [isSocketConnected, refreshLatestMessages, session?.accessToken]);
 
   useEffect(() => {
     const token = session?.accessToken;
     if (!token) return;
     const socket = connectChatSocket(token);
     socketRef.current = socket;
+    setIsSocketConnected(socket.connected);
+
+    const handleSocketConnect = () => {
+      setIsSocketConnected(true);
+      void refreshLatestMessages();
+    };
+
+    const handleSocketDisconnect = () => {
+      setIsSocketConnected(false);
+    };
 
     const handleNewMessage = (payload: Record<string, unknown>) => {
       const messagePayload = (
@@ -625,6 +638,9 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
     };
 
     socket.on("new_message", handleNewMessage);
+    socket.on("connect", handleSocketConnect);
+    socket.on("disconnect", handleSocketDisconnect);
+    socket.on("connect_error", handleSocketDisconnect);
     socket.on("message_reaction", handleReaction);
     socket.on("message_deleted", handleDeleted);
     socket.on("message_read", handleRead);
@@ -642,6 +658,9 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
 
     return () => {
       socket.off("new_message", handleNewMessage);
+      socket.off("connect", handleSocketConnect);
+      socket.off("disconnect", handleSocketDisconnect);
+      socket.off("connect_error", handleSocketDisconnect);
       socket.off("message_reaction", handleReaction);
       socket.off("message_deleted", handleDeleted);
       socket.off("message_read", handleRead);
@@ -656,6 +675,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
       socket.off("webrtc_ice_candidate", handleIce);
       socket.off("user_online", handleUserOnline);
       socket.off("user_offline", handleUserOffline);
+      setIsSocketConnected(false);
       disconnectChatSocket();
     };
   }, [
@@ -666,6 +686,7 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
     id,
     match?.otherUserId,
     normalizeMessage,
+    refreshLatestMessages,
     session?.accessToken,
   ]);
 
@@ -685,9 +706,17 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
 
   useEffect(() => {
     if (!session?.accessToken || !messages.length) return;
+    if (typeof document !== "undefined" && document.hidden) return;
     const lastIncoming = [...messages].reverse().find((message) => message.senderId === "other");
     if (!lastIncoming) return;
-    void api.markMatchRead(session.accessToken, id, lastIncoming.id).catch(() => null);
+    if (lastReadSentRef.current === lastIncoming.id) return;
+    lastReadSentRef.current = lastIncoming.id;
+    void api.markMatchRead(session.accessToken, id, lastIncoming.id).catch(() => {
+      if (lastReadSentRef.current === lastIncoming.id) {
+        lastReadSentRef.current = null;
+      }
+      return null;
+    });
     socketRef.current?.emit("message_read", {
       match_id: id,
       last_read_message_id: lastIncoming.id,
