@@ -2,7 +2,7 @@ import { Match } from './mockMatches';
 import { Profile } from './mockProfiles';
 import type { AppNotification, UserProfile } from './store';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://server2.matrixaiserver.com';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://server.hkmeetup.space';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 

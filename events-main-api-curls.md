@@ -3,7 +3,7 @@
 Set these first:
 
 ```bash
-BASE_URL="https://server2.matrixaiserver.com"
+BASE_URL="https://server.hkmeetup.space"
 TOKEN="USER_JWT_TOKEN"
 EVENT_ID="00000000-0000-0000-0000-000000000000"
 JOIN_REQUEST_ID="00000000-0000-0000-0000-000000000000"
