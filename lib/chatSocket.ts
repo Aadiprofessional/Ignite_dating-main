@@ -11,10 +11,6 @@ const resolveSocketBase = () => {
   if (CHAT_SOCKET_URL) {
     return CHAT_SOCKET_URL;
   }
-  if (typeof window !== "undefined") {
-    const origin = window.location.origin;
-    if (origin) return origin;
-  }
   if (API_BASE) {
     try {
       const url = new URL(API_BASE);
@@ -22,6 +18,10 @@ const resolveSocketBase = () => {
     } catch {
       return API_BASE;
     }
+  }
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin;
+    if (origin) return origin;
   }
   return "https://server.hkmeetup.space";
 };
