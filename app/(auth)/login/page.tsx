@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -23,7 +23,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useStore();
@@ -224,5 +224,13 @@ export default function LoginPage() {
         </p>
       </div>
     </AuthLayout>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<AuthLayout quote="We loved with a love that was more than love." author="Edgar Allan Poe"><div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-sm text-white/60">Loading login...</div></AuthLayout>}>
+      <LoginContent />
+    </Suspense>
   );
 }

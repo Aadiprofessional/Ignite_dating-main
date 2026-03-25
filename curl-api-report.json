@@ -1,5 +1,5 @@
 {
-  "baseUrl": "http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io",
+  "baseUrl": "https://server2.matrixaiserver.com",
   "testedAt": "2026-03-18T17:09:47.058Z",
   "users": {
     "user1": "ignite_test_1773852469188_1@example.com",
@@ -15,7 +15,7 @@
   "calls": [
     {
       "name": "login_user1",
-      "curl": "curl -X POST \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/auth/login\" -H \"content-type: application/json\" --data-raw '{\"email\":\"ignite_test_1773852469188_1@example.com\",\"password\":\"[REDACTED]\"}'",
+      "curl": "curl -X POST \"https://server2.matrixaiserver.com/api/auth/login\" -H \"content-type: application/json\" --data-raw '{\"email\":\"ignite_test_1773852469188_1@example.com\",\"password\":\"[REDACTED]\"}'",
       "request": {
         "method": "POST",
         "path": "/api/auth/login",
@@ -127,7 +127,7 @@
     },
     {
       "name": "login_user2",
-      "curl": "curl -X POST \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/auth/login\" -H \"content-type: application/json\" --data-raw '{\"email\":\"ignite_test_1773852469188_2@example.com\",\"password\":\"[REDACTED]\"}'",
+      "curl": "curl -X POST \"https://server2.matrixaiserver.com/api/auth/login\" -H \"content-type: application/json\" --data-raw '{\"email\":\"ignite_test_1773852469188_2@example.com\",\"password\":\"[REDACTED]\"}'",
       "request": {
         "method": "POST",
         "path": "/api/auth/login",
@@ -239,7 +239,7 @@
     },
     {
       "name": "auth_me_user1",
-      "curl": "curl -X GET \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/auth/me\" -H \"authorization: Bearer {{USER1_TOKEN}}\"",
+      "curl": "curl -X GET \"https://server2.matrixaiserver.com/api/auth/me\" -H \"authorization: Bearer {{USER1_TOKEN}}\"",
       "request": {
         "method": "GET",
         "path": "/api/auth/me",
@@ -285,7 +285,7 @@
     },
     {
       "name": "update_me_user1",
-      "curl": "curl -X PUT \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/me\" -H \"authorization: Bearer {{USER1_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"bio\":\"User1 bio curl run\",\"city\":\"Mumbai\",\"country\":\"India\",\"latitude\":19.076,\"longitude\":72.8777}'",
+      "curl": "curl -X PUT \"https://server2.matrixaiserver.com/api/me\" -H \"authorization: Bearer {{USER1_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"bio\":\"User1 bio curl run\",\"city\":\"Mumbai\",\"country\":\"India\",\"latitude\":19.076,\"longitude\":72.8777}'",
       "request": {
         "method": "PUT",
         "path": "/api/me",
@@ -325,7 +325,7 @@
     },
     {
       "name": "update_preferences_user1",
-      "curl": "curl -X PUT \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/preferences\" -H \"authorization: Bearer {{USER1_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"min_age\":21,\"max_age\":35,\"max_distance_km\":200,\"interested_in\":[\"female\"],\"show_me\":true}'",
+      "curl": "curl -X PUT \"https://server2.matrixaiserver.com/api/preferences\" -H \"authorization: Bearer {{USER1_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"min_age\":21,\"max_age\":35,\"max_distance_km\":200,\"interested_in\":[\"female\"],\"show_me\":true}'",
       "request": {
         "method": "PUT",
         "path": "/api/preferences",
@@ -359,7 +359,7 @@
     },
     {
       "name": "replace_images_user1",
-      "curl": "curl -X POST \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/images\" -H \"authorization: Bearer {{USER1_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"operation\":\"replace_all\",\"urls\":[\"https://picsum.photos/seed/u1curl/400/600\",\"https://picsum.photos/seed/u1curl2/400/600\"]}'",
+      "curl": "curl -X POST \"https://server2.matrixaiserver.com/api/images\" -H \"authorization: Bearer {{USER1_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"operation\":\"replace_all\",\"urls\":[\"https://picsum.photos/seed/u1curl/400/600\",\"https://picsum.photos/seed/u1curl2/400/600\"]}'",
       "request": {
         "method": "POST",
         "path": "/api/images",
@@ -399,7 +399,7 @@
     },
     {
       "name": "discover_user1",
-      "curl": "curl -X GET \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/discover?limit=20\" -H \"authorization: Bearer {{USER1_TOKEN}}\"",
+      "curl": "curl -X GET \"https://server2.matrixaiserver.com/api/discover?limit=20\" -H \"authorization: Bearer {{USER1_TOKEN}}\"",
       "request": {
         "method": "GET",
         "path": "/api/discover?limit=20",
@@ -414,7 +414,7 @@
     },
     {
       "name": "auth_me_user2",
-      "curl": "curl -X GET \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/auth/me\" -H \"authorization: Bearer {{USER2_TOKEN}}\"",
+      "curl": "curl -X GET \"https://server2.matrixaiserver.com/api/auth/me\" -H \"authorization: Bearer {{USER2_TOKEN}}\"",
       "request": {
         "method": "GET",
         "path": "/api/auth/me",
@@ -459,7 +459,7 @@
     },
     {
       "name": "update_me_user2",
-      "curl": "curl -X PUT \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/me\" -H \"authorization: Bearer {{USER2_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"bio\":\"User2 bio curl run\",\"city\":\"Noida\",\"country\":\"India\",\"latitude\":28.57,\"longitude\":77.32}'",
+      "curl": "curl -X PUT \"https://server2.matrixaiserver.com/api/me\" -H \"authorization: Bearer {{USER2_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"bio\":\"User2 bio curl run\",\"city\":\"Noida\",\"country\":\"India\",\"latitude\":28.57,\"longitude\":77.32}'",
       "request": {
         "method": "PUT",
         "path": "/api/me",
@@ -498,7 +498,7 @@
     },
     {
       "name": "update_preferences_user2",
-      "curl": "curl -X PUT \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/preferences\" -H \"authorization: Bearer {{USER2_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"min_age\":21,\"max_age\":35,\"max_distance_km\":200,\"interested_in\":[\"male\"],\"show_me\":true}'",
+      "curl": "curl -X PUT \"https://server2.matrixaiserver.com/api/preferences\" -H \"authorization: Bearer {{USER2_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"min_age\":21,\"max_age\":35,\"max_distance_km\":200,\"interested_in\":[\"male\"],\"show_me\":true}'",
       "request": {
         "method": "PUT",
         "path": "/api/preferences",
@@ -532,7 +532,7 @@
     },
     {
       "name": "replace_images_user2",
-      "curl": "curl -X POST \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/images\" -H \"authorization: Bearer {{USER2_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"operation\":\"replace_all\",\"urls\":[\"https://picsum.photos/seed/u2curl/400/600\"]}'",
+      "curl": "curl -X POST \"https://server2.matrixaiserver.com/api/images\" -H \"authorization: Bearer {{USER2_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"operation\":\"replace_all\",\"urls\":[\"https://picsum.photos/seed/u2curl/400/600\"]}'",
       "request": {
         "method": "POST",
         "path": "/api/images",
@@ -570,7 +570,7 @@
     },
     {
       "name": "discover_user2",
-      "curl": "curl -X GET \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/discover?limit=20\" -H \"authorization: Bearer {{USER2_TOKEN}}\"",
+      "curl": "curl -X GET \"https://server2.matrixaiserver.com/api/discover?limit=20\" -H \"authorization: Bearer {{USER2_TOKEN}}\"",
       "request": {
         "method": "GET",
         "path": "/api/discover?limit=20",
@@ -585,7 +585,7 @@
     },
     {
       "name": "swipe_user1_like_user2",
-      "curl": "curl -X POST \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/swipes\" -H \"authorization: Bearer {{USER1_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"target_id\":\"eae6fd78-83ad-48ba-b025-85886b051dca\",\"action\":\"like\"}'",
+      "curl": "curl -X POST \"https://server2.matrixaiserver.com/api/swipes\" -H \"authorization: Bearer {{USER1_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"target_id\":\"eae6fd78-83ad-48ba-b025-85886b051dca\",\"action\":\"like\"}'",
       "request": {
         "method": "POST",
         "path": "/api/swipes",
@@ -608,7 +608,7 @@
     },
     {
       "name": "swipe_user2_like_user1",
-      "curl": "curl -X POST \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/swipes\" -H \"authorization: Bearer {{USER2_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"target_id\":\"36dd385d-8dfb-4ed7-b228-1b43d3ae869a\",\"action\":\"like\"}'",
+      "curl": "curl -X POST \"https://server2.matrixaiserver.com/api/swipes\" -H \"authorization: Bearer {{USER2_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"target_id\":\"36dd385d-8dfb-4ed7-b228-1b43d3ae869a\",\"action\":\"like\"}'",
       "request": {
         "method": "POST",
         "path": "/api/swipes",
@@ -631,7 +631,7 @@
     },
     {
       "name": "notifications_user1",
-      "curl": "curl -X GET \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/notifications?limit=30\" -H \"authorization: Bearer {{USER1_TOKEN}}\"",
+      "curl": "curl -X GET \"https://server2.matrixaiserver.com/api/notifications?limit=30\" -H \"authorization: Bearer {{USER1_TOKEN}}\"",
       "request": {
         "method": "GET",
         "path": "/api/notifications?limit=30",
@@ -659,7 +659,7 @@
     },
     {
       "name": "matches_user1",
-      "curl": "curl -X GET \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/matches\" -H \"authorization: Bearer {{USER1_TOKEN}}\"",
+      "curl": "curl -X GET \"https://server2.matrixaiserver.com/api/matches\" -H \"authorization: Bearer {{USER1_TOKEN}}\"",
       "request": {
         "method": "GET",
         "path": "/api/matches",
@@ -682,7 +682,7 @@
     },
     {
       "name": "notification_read_user1",
-      "curl": "curl -X PATCH \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/notifications/f8559e51-9d03-47bf-a52d-34bca21e9ed3/read\" -H \"authorization: Bearer {{USER1_TOKEN}}\"",
+      "curl": "curl -X PATCH \"https://server2.matrixaiserver.com/api/notifications/f8559e51-9d03-47bf-a52d-34bca21e9ed3/read\" -H \"authorization: Bearer {{USER1_TOKEN}}\"",
       "request": {
         "method": "PATCH",
         "path": "/api/notifications/f8559e51-9d03-47bf-a52d-34bca21e9ed3/read",
@@ -708,7 +708,7 @@
     },
     {
       "name": "notifications_user2",
-      "curl": "curl -X GET \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/notifications?limit=30\" -H \"authorization: Bearer {{USER2_TOKEN}}\"",
+      "curl": "curl -X GET \"https://server2.matrixaiserver.com/api/notifications?limit=30\" -H \"authorization: Bearer {{USER2_TOKEN}}\"",
       "request": {
         "method": "GET",
         "path": "/api/notifications?limit=30",
@@ -748,7 +748,7 @@
     },
     {
       "name": "matches_user2",
-      "curl": "curl -X GET \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/matches\" -H \"authorization: Bearer {{USER2_TOKEN}}\"",
+      "curl": "curl -X GET \"https://server2.matrixaiserver.com/api/matches\" -H \"authorization: Bearer {{USER2_TOKEN}}\"",
       "request": {
         "method": "GET",
         "path": "/api/matches",
@@ -771,7 +771,7 @@
     },
     {
       "name": "report_user2_by_user1",
-      "curl": "curl -X POST \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/reports\" -H \"authorization: Bearer {{USER1_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"reported_id\":\"eae6fd78-83ad-48ba-b025-85886b051dca\",\"reason\":\"spam\",\"details\":\"curl sequential api test\"}'",
+      "curl": "curl -X POST \"https://server2.matrixaiserver.com/api/reports\" -H \"authorization: Bearer {{USER1_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"reported_id\":\"eae6fd78-83ad-48ba-b025-85886b051dca\",\"reason\":\"spam\",\"details\":\"curl sequential api test\"}'",
       "request": {
         "method": "POST",
         "path": "/api/reports",
@@ -792,7 +792,7 @@
     },
     {
       "name": "block_user1_by_user2",
-      "curl": "curl -X POST \"http://wgggw4w4c4sokc0gccwwggws.72.61.182.41.sslip.io/api/blocks\" -H \"authorization: Bearer {{USER2_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"blocked_id\":\"36dd385d-8dfb-4ed7-b228-1b43d3ae869a\"}'",
+      "curl": "curl -X POST \"https://server2.matrixaiserver.com/api/blocks\" -H \"authorization: Bearer {{USER2_TOKEN}}\" -H \"content-type: application/json\" --data-raw '{\"blocked_id\":\"36dd385d-8dfb-4ed7-b228-1b43d3ae869a\"}'",
       "request": {
         "method": "POST",
         "path": "/api/blocks",

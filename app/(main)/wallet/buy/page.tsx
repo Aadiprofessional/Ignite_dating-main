@@ -5,12 +5,12 @@ import { useStore } from "@/lib/store";
 import { Crown, Loader2, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 const formatPrice = (price: string) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(Number(price || 0));
 
-export default function BuySubscriptionPage() {
+function BuySubscriptionContent() {
   const { session, currentUser, refreshWallet, wallet } = useStore();
   const searchParams = useSearchParams();
   const preferredType = searchParams.get("type");
@@ -164,5 +164,19 @@ export default function BuySubscriptionPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function BuySubscriptionPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto flex min-h-[70vh] w-full max-w-4xl items-center justify-center px-6 text-zinc-300">
+          Loading wallet...
+        </div>
+      }
+    >
+      <BuySubscriptionContent />
+    </Suspense>
   );
 }
