@@ -50,6 +50,8 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
   const [activeCallId, setActiveCallId] = useState<string | null>(null);
   const [incomingOffer, setIncomingOffer] = useState<RTCSessionDescriptionInit | null>(null);
   const [incomingTargetUserId, setIncomingTargetUserId] = useState<string | null>(null);
+  const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const callStateRef = useRef<"idle" | "calling" | "incoming" | "active">("idle");
   const [showCallOverlay, setShowCallOverlay] = useState(false);
   const [composerText, setComposerText] = useState("");
   const [replyingTo, setReplyingTo] = useState<ChatUiMessage | null>(null);
@@ -67,6 +69,9 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     () => [...messages].reverse().find((message) => message.senderId === "other")?.id || null,
     [messages]
   );
+  useEffect(() => {
+    callStateRef.current = callState;
+  }, [callState]);
 
   const fetchReplySuggestions = useCallback(
     async (triggerMessageId: string, force = false) => {
@@ -290,6 +295,7 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     setIncomingOffer(null);
     setIncomingTargetUserId(null);
+    pendingIceCandidatesRef.current = [];
     setIncomingCallId(null);
     setActiveCallId(null);
     setCallState("idle");
@@ -372,6 +378,82 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       return peer;
     },
     [id, match?.otherUserId, requestMediaStream]
+  );
+
+  const extractOffer = useCallback((payload: Record<string, unknown>) => {
+    const payloadOffer = payload.offer;
+    if (payloadOffer && typeof payloadOffer === "object") {
+      const offerRecord = payloadOffer as Record<string, unknown>;
+      const sdp = typeof offerRecord.sdp === "string" ? offerRecord.sdp : "";
+      if (sdp) {
+        return { type: "offer" as RTCSdpType, sdp };
+      }
+    }
+    const sdp = typeof payload.sdp === "string" ? payload.sdp : "";
+    if (!sdp) return null;
+    return { type: "offer" as RTCSdpType, sdp };
+  }, []);
+
+  const extractAnswer = useCallback((payload: Record<string, unknown>) => {
+    const payloadAnswer = payload.answer;
+    if (payloadAnswer && typeof payloadAnswer === "object") {
+      const answerRecord = payloadAnswer as Record<string, unknown>;
+      const sdp = typeof answerRecord.sdp === "string" ? answerRecord.sdp : "";
+      if (sdp) {
+        return { type: "answer" as RTCSdpType, sdp };
+      }
+    }
+    const sdp = typeof payload.sdp === "string" ? payload.sdp : "";
+    if (!sdp) return null;
+    return { type: "answer" as RTCSdpType, sdp };
+  }, []);
+
+  const applyPendingIceCandidates = useCallback(async (peer: RTCPeerConnection) => {
+    if (!peer.remoteDescription || !pendingIceCandidatesRef.current.length) return;
+    const queued = [...pendingIceCandidatesRef.current];
+    pendingIceCandidatesRef.current = [];
+    for (const candidate of queued) {
+      try {
+        await peer.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch {
+        pendingIceCandidatesRef.current.push(candidate);
+      }
+    }
+  }, []);
+
+  const setRemoteOfferSafely = useCallback(
+    async (peer: RTCPeerConnection, offer: RTCSessionDescriptionInit) => {
+      if (!offer.sdp) return false;
+      const currentRemote = peer.currentRemoteDescription;
+      if (currentRemote?.type === "offer" && currentRemote.sdp === offer.sdp) {
+        return true;
+      }
+      if (peer.signalingState === "have-local-offer") {
+        try {
+          await peer.setLocalDescription({ type: "rollback" });
+        } catch {
+          return false;
+        }
+      }
+      if (peer.signalingState !== "stable" && peer.signalingState !== "have-remote-offer") {
+        return false;
+      }
+      await peer.setRemoteDescription(new RTCSessionDescription(offer));
+      await applyPendingIceCandidates(peer);
+      return true;
+    },
+    [applyPendingIceCandidates]
+  );
+
+  const setRemoteAnswerSafely = useCallback(
+    async (peer: RTCPeerConnection, answer: RTCSessionDescriptionInit) => {
+      if (!answer.sdp) return false;
+      if (peer.signalingState !== "have-local-offer") return false;
+      await peer.setRemoteDescription(new RTCSessionDescription(answer));
+      await applyPendingIceCandidates(peer);
+      return true;
+    },
+    [applyPendingIceCandidates]
   );
 
   useEffect(() => {
@@ -542,8 +624,9 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     const handleIncomingCall = (payload: Record<string, unknown>) => {
       const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
       if (payloadMatchId !== id) return;
+      const parsedOffer = extractOffer(payload);
       setIncomingCallId(typeof payload.call_id === "string" ? payload.call_id : null);
-      setIncomingOffer((payload.offer as RTCSessionDescriptionInit | undefined) || null);
+      setIncomingOffer(parsedOffer);
       setIncomingTargetUserId(typeof payload.target_user_id === "string" ? payload.target_user_id : match?.otherUserId || null);
       setCallState("incoming");
       setShowCallOverlay(false);
@@ -551,12 +634,19 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
 
     const handleCallAccepted = (payload: Record<string, unknown>) => {
       if (typeof payload.call_id === "string") setActiveCallId(payload.call_id);
-      const answer = payload.answer as RTCSessionDescriptionInit | undefined;
-      if (answer && peerRef.current) {
-        void peerRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+      const answer = extractAnswer(payload);
+      if (!answer || !peerRef.current) {
+        setCallState("active");
+        setShowCallOverlay(true);
+        return;
       }
-      setCallState("active");
-      setShowCallOverlay(true);
+      void (async () => {
+        const applied = await setRemoteAnswerSafely(peerRef.current as RTCPeerConnection, answer);
+        if (applied) {
+          setCallState("active");
+          setShowCallOverlay(true);
+        }
+      })();
     };
 
     const handleCallRejected = () => {
@@ -570,18 +660,20 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     const handleOffer = async (payload: Record<string, unknown>) => {
       const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
       if (payloadMatchId !== id) return;
-      const sdp = typeof payload.sdp === "string" ? payload.sdp : "";
-      if (!sdp) return;
-      setIncomingOffer({ type: "offer", sdp });
-      setIncomingTargetUserId(typeof payload.target_user_id === "string" ? payload.target_user_id : match?.otherUserId || null);
-      if (callState === "active" || callState === "calling") {
+      const offer = extractOffer(payload);
+      if (!offer) return;
+      const targetUserId = typeof payload.target_user_id === "string" ? payload.target_user_id : match?.otherUserId;
+      setIncomingOffer(offer);
+      setIncomingTargetUserId(targetUserId || null);
+      if (callStateRef.current === "active" || callStateRef.current === "calling") {
         const peer = await ensurePeer(typeof payload.target_user_id === "string" ? payload.target_user_id : match?.otherUserId);
-        await peer.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp }));
+        const offerApplied = await setRemoteOfferSafely(peer, offer);
+        if (!offerApplied || peer.signalingState !== "have-remote-offer") return;
         const answer = await peer.createAnswer();
         await peer.setLocalDescription(answer);
         socket.emit("webrtc_answer", {
           match_id: id,
-          target_user_id: typeof payload.target_user_id === "string" ? payload.target_user_id : match?.otherUserId,
+          target_user_id: targetUserId,
           sdp: answer.sdp,
         });
       } else {
@@ -592,18 +684,28 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     const handleAnswer = async (payload: Record<string, unknown>) => {
       const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
       if (payloadMatchId !== id || !peerRef.current) return;
-      const sdp = typeof payload.sdp === "string" ? payload.sdp : "";
-      if (!sdp) return;
-      await peerRef.current.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp }));
+      const answer = extractAnswer(payload);
+      if (!answer) return;
+      const applied = await setRemoteAnswerSafely(peerRef.current, answer);
+      if (!applied) return;
       setCallState("active");
     };
 
     const handleIce = async (payload: Record<string, unknown>) => {
       const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
-      if (payloadMatchId !== id || !peerRef.current) return;
+      if (payloadMatchId !== id) return;
       const candidate = payload.candidate as RTCIceCandidateInit | undefined;
       if (!candidate) return;
-      await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+      const peer = peerRef.current;
+      if (!peer || !peer.remoteDescription) {
+        pendingIceCandidatesRef.current.push(candidate);
+        return;
+      }
+      try {
+        await peer.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch {
+        pendingIceCandidatesRef.current.push(candidate);
+      }
     };
 
     const handleUserOnline = (payload: Record<string, unknown>) => {
@@ -658,12 +760,15 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     };
   }, [
     appendOrUpdateMessage,
-    callState,
     cleanupCall,
     ensurePeer,
+    extractAnswer,
+    extractOffer,
     id,
     match?.otherUserId,
     normalizeMessage,
+    setRemoteAnswerSafely,
+    setRemoteOfferSafely,
     refreshLatestMessages,
     session?.accessToken,
   ]);
@@ -747,8 +852,12 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     if (!socketRef.current) return;
     try {
       const peer = await ensurePeer(incomingTargetUserId || match?.otherUserId);
-      if (incomingOffer) {
-        await peer.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+      if (!incomingOffer?.sdp) {
+        throw new Error("Incoming call offer is not ready yet. Please try again.");
+      }
+      const offerApplied = await setRemoteOfferSafely(peer, incomingOffer);
+      if (!offerApplied || peer.signalingState !== "have-remote-offer") {
+        throw new Error("Call negotiation is not ready yet. Please retry.");
       }
       const answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
@@ -769,7 +878,7 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       setError(message);
       cleanupCall();
     }
-  }, [cleanupCall, ensurePeer, id, incomingCallId, incomingOffer, incomingTargetUserId, match?.otherUserId]);
+  }, [cleanupCall, ensurePeer, id, incomingCallId, incomingOffer, incomingTargetUserId, match?.otherUserId, setRemoteOfferSafely]);
 
   const rejectIncomingCall = useCallback(() => {
     if (!socketRef.current) return;
