@@ -52,6 +52,8 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
   const [incomingTargetUserId, setIncomingTargetUserId] = useState<string | null>(null);
   const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const callStateRef = useRef<"idle" | "calling" | "incoming" | "active">("idle");
+  const pendingIncomingAcceptRef = useRef(false);
+  const acceptingIncomingRef = useRef(false);
   const [showCallOverlay, setShowCallOverlay] = useState(false);
   const [composerText, setComposerText] = useState("");
   const [replyingTo, setReplyingTo] = useState<ChatUiMessage | null>(null);
@@ -296,6 +298,8 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     setIncomingOffer(null);
     setIncomingTargetUserId(null);
     pendingIceCandidatesRef.current = [];
+    pendingIncomingAcceptRef.current = false;
+    acceptingIncomingRef.current = false;
     setIncomingCallId(null);
     setActiveCallId(null);
     setCallState("idle");
@@ -454,6 +458,36 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       return true;
     },
     [applyPendingIceCandidates]
+  );
+
+  const finalizeIncomingAcceptance = useCallback(
+    async (peer: RTCPeerConnection, targetUserId: string | null | undefined, callId: string | null | undefined) => {
+      if (!socketRef.current || acceptingIncomingRef.current) return false;
+      if (peer.signalingState !== "have-remote-offer") return false;
+      acceptingIncomingRef.current = true;
+      try {
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+        socketRef.current.emit("call_accept", {
+          call_id: callId || incomingCallId,
+          answer,
+        });
+        socketRef.current.emit("webrtc_answer", {
+          match_id: id,
+          target_user_id: targetUserId || incomingTargetUserId || match?.otherUserId,
+          sdp: answer.sdp,
+        });
+        pendingIncomingAcceptRef.current = false;
+        setActiveCallId((callId as string) || incomingCallId);
+        setCallState("active");
+        setShowCallOverlay(true);
+        setError(null);
+        return true;
+      } finally {
+        acceptingIncomingRef.current = false;
+      }
+    },
+    [id, incomingCallId, incomingTargetUserId, match?.otherUserId]
   );
 
   useEffect(() => {
@@ -625,11 +659,21 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
       if (payloadMatchId !== id) return;
       const parsedOffer = extractOffer(payload);
-      setIncomingCallId(typeof payload.call_id === "string" ? payload.call_id : null);
+      const callId = typeof payload.call_id === "string" ? payload.call_id : null;
+      const targetUserId = typeof payload.target_user_id === "string" ? payload.target_user_id : match?.otherUserId || null;
+      setIncomingCallId(callId);
       setIncomingOffer(parsedOffer);
-      setIncomingTargetUserId(typeof payload.target_user_id === "string" ? payload.target_user_id : match?.otherUserId || null);
+      setIncomingTargetUserId(targetUserId);
       setCallState("incoming");
       setShowCallOverlay(false);
+      if (pendingIncomingAcceptRef.current && parsedOffer?.sdp) {
+        void (async () => {
+          const peer = await ensurePeer(targetUserId);
+          const offerApplied = await setRemoteOfferSafely(peer, parsedOffer);
+          if (!offerApplied) return;
+          await finalizeIncomingAcceptance(peer, targetUserId, callId);
+        })();
+      }
     };
 
     const handleCallAccepted = (payload: Record<string, unknown>) => {
@@ -678,6 +722,12 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
         });
       } else {
         setCallState("incoming");
+        if (pendingIncomingAcceptRef.current) {
+          const peer = await ensurePeer(targetUserId);
+          const offerApplied = await setRemoteOfferSafely(peer, offer);
+          if (!offerApplied) return;
+          await finalizeIncomingAcceptance(peer, targetUserId, incomingCallId);
+        }
       }
     };
 
@@ -764,7 +814,9 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     ensurePeer,
     extractAnswer,
     extractOffer,
+    finalizeIncomingAcceptance,
     id,
+    incomingCallId,
     match?.otherUserId,
     normalizeMessage,
     setRemoteAnswerSafely,
@@ -850,35 +902,32 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
 
   const acceptIncomingCall = useCallback(async () => {
     if (!socketRef.current) return;
+    pendingIncomingAcceptRef.current = true;
+    setError(null);
     try {
       const peer = await ensurePeer(incomingTargetUserId || match?.otherUserId);
-      if (!incomingOffer?.sdp) {
-        throw new Error("Incoming call offer is not ready yet. Please try again.");
+      if (incomingOffer?.sdp) {
+        const offerApplied = await setRemoteOfferSafely(peer, incomingOffer);
+        if (!offerApplied) {
+          throw new Error("Unable to apply incoming call offer.");
+        }
       }
-      const offerApplied = await setRemoteOfferSafely(peer, incomingOffer);
-      if (!offerApplied || peer.signalingState !== "have-remote-offer") {
-        throw new Error("Call negotiation is not ready yet. Please retry.");
+      if (peer.signalingState !== "have-remote-offer") {
+        setCallState("incoming");
+        setShowCallOverlay(true);
+        return;
       }
-      const answer = await peer.createAnswer();
-      await peer.setLocalDescription(answer);
-      socketRef.current.emit("call_accept", {
-        call_id: incomingCallId,
-        answer,
-      });
-      socketRef.current.emit("webrtc_answer", {
-        match_id: id,
-        target_user_id: incomingTargetUserId || match?.otherUserId,
-        sdp: answer.sdp,
-      });
-      setActiveCallId(incomingCallId);
-      setCallState("active");
-      setShowCallOverlay(true);
+      const accepted = await finalizeIncomingAcceptance(peer, incomingTargetUserId || match?.otherUserId, incomingCallId);
+      if (!accepted) {
+        throw new Error("Unable to complete call negotiation.");
+      }
     } catch (callError) {
+      pendingIncomingAcceptRef.current = false;
       const message = callError instanceof Error ? callError.message : "Unable to accept call";
       setError(message);
       cleanupCall();
     }
-  }, [cleanupCall, ensurePeer, id, incomingCallId, incomingOffer, incomingTargetUserId, match?.otherUserId, setRemoteOfferSafely]);
+  }, [cleanupCall, ensurePeer, finalizeIncomingAcceptance, incomingCallId, incomingOffer, incomingTargetUserId, match?.otherUserId, setRemoteOfferSafely]);
 
   const rejectIncomingCall = useCallback(() => {
     if (!socketRef.current) return;
