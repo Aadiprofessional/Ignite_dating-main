@@ -2,7 +2,7 @@
 
 import { io, Socket } from "socket.io-client";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:49191";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const CHAT_SOCKET_URL = process.env.NEXT_PUBLIC_CHAT_SOCKET_URL;
 const CHAT_SOCKET_PATH = process.env.NEXT_PUBLIC_CHAT_SOCKET_PATH || "/chat";
 const CHAT_SOCKET_TRANSPORTS = process.env.NEXT_PUBLIC_CHAT_SOCKET_TRANSPORTS;
@@ -11,11 +11,31 @@ const resolveSocketBase = () => {
   if (CHAT_SOCKET_URL) {
     return CHAT_SOCKET_URL;
   }
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin;
+    if (origin) return origin;
+  }
+  if (API_BASE) {
+    try {
+      const url = new URL(API_BASE);
+      return `${url.protocol}//${url.host}`;
+    } catch {
+      return API_BASE;
+    }
+  }
+  return "https://server.hkmeetup.space";
+};
+
+const resolveSocketPath = () => {
+  if (!CHAT_SOCKET_PATH) return "/chat";
+  return CHAT_SOCKET_PATH.startsWith("/") ? CHAT_SOCKET_PATH : `/${CHAT_SOCKET_PATH}`;
+};
+
+const resolveSecureOption = (socketBase: string) => {
   try {
-    const url = new URL(API_BASE);
-    return `${url.protocol}//${url.host}`;
+    return new URL(socketBase).protocol === "https:";
   } catch {
-    return "http://localhost:49191";
+    return typeof window !== "undefined" ? window.location.protocol === "https:" : true;
   }
 };
 
@@ -45,12 +65,20 @@ export const connectChatSocket = (token: string) => {
     socketRef.disconnect();
     socketRef = null;
   }
-  socketRef = io(resolveSocketBase(), {
-    path: CHAT_SOCKET_PATH,
+  const socketBase = resolveSocketBase();
+  socketRef = io(socketBase, {
+    path: resolveSocketPath(),
     auth: { token },
     transports: resolveTransports(),
+    secure: resolveSecureOption(socketBase),
+    upgrade: true,
+    rememberUpgrade: true,
+    autoConnect: true,
     reconnection: true,
-    reconnectionAttempts: 10,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 500,
+    reconnectionDelayMax: 5000,
+    timeout: 15000,
   });
   return socketRef;
 };

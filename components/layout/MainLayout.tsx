@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { connectChatSocket, disconnectChatSocket } from "@/lib/chatSocket";
 import { BottomNav } from "./BottomNav";
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
@@ -46,6 +47,24 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     };
     void run();
   }, [isHydrated, session?.accessToken, hydrateFromApi, refreshOnboardingStatus, refreshWallet]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    const token = session?.accessToken;
+    if (!token) {
+      disconnectChatSocket();
+      return;
+    }
+    const socket = connectChatSocket(token);
+    if (!socket.connected) {
+      socket.connect();
+    }
+    return () => {
+      if (!session?.accessToken) {
+        disconnectChatSocket();
+      }
+    };
+  }, [isHydrated, session?.accessToken]);
 
   useEffect(() => {
     if (!isHydrated || !session?.accessToken) return;

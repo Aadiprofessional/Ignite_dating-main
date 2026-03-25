@@ -6,7 +6,7 @@ import { ChatUiMessage, MessageBubble } from "@/components/chat/MessageBubble";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { MiniProfileDrawer } from "@/components/chat/MiniProfileDrawer";
 import { api, ApiError, ChatMessageRecord, ChatMessageReaction, ReplySuggestionItem } from "@/lib/api";
-import { connectChatSocket, disconnectChatSocket } from "@/lib/chatSocket";
+import { connectChatSocket } from "@/lib/chatSocket";
 import { useStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -676,7 +676,6 @@ export function ChatPageClient({ id }: ChatPageClientProps) {
       socket.off("user_online", handleUserOnline);
       socket.off("user_offline", handleUserOffline);
       setIsSocketConnected(false);
-      disconnectChatSocket();
     };
   }, [
     appendOrUpdateMessage,
