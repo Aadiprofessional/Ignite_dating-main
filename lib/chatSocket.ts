@@ -19,10 +19,6 @@ const resolveSocketBase = () => {
       return API_BASE;
     }
   }
-  if (typeof window !== "undefined") {
-    const origin = window.location.origin;
-    if (origin) return origin;
-  }
   return "https://server.hkmeetup.space";
 };
 
@@ -54,14 +50,14 @@ export type ChatSocket = Socket;
 let socketRef: ChatSocket | null = null;
 
 export const connectChatSocket = (token: string) => {
-  if (socketRef?.connected) {
+  if (socketRef) {
     const currentAuthToken =
       socketRef.auth && typeof socketRef.auth === "object"
         ? (socketRef.auth as { token?: string }).token
         : undefined;
-    if (currentAuthToken === token) return socketRef;
-  }
-  if (socketRef) {
+    if (currentAuthToken === token) {
+      return socketRef;
+    }
     socketRef.disconnect();
     socketRef = null;
   }
