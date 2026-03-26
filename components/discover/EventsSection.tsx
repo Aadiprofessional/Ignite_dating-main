@@ -32,7 +32,7 @@ type CreateEventFormState = {
   capacity: string;
 };
 
-const categoryOptions = ["Social", "Networking", "Music", "Food", "Wellness"];
+const categoryOptions = ["Dating", "Social", "Networking", "Music", "Food", "Wellness", "Adventure", "Games", "Art", "Other"];
 const discoveryTabs: { id: DiscoveryFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "today", label: "Today" },
@@ -382,9 +382,12 @@ export function EventsSection() {
   );
 
   const categoryFilterOptions = useMemo(() => {
-    const set = new Set<string>();
-    approvedEvents.forEach((event) => set.add(getEventCategory(event)));
-    return ["all", ...Array.from(set)];
+    const eventCategories = Array.from(new Set(approvedEvents.map((event) => getEventCategory(event))));
+    const mergedCategories = [
+      ...categoryOptions,
+      ...eventCategories.filter((category) => !categoryOptions.some((option) => option.toLowerCase() === category.toLowerCase())),
+    ];
+    return ["all", ...mergedCategories];
   }, [approvedEvents]);
 
   const selectedDateLabel = useMemo(() => {
@@ -1395,129 +1398,186 @@ export function EventsSection() {
           Create Event
         </button>
         <DialogContent
-          className="fixed right-0 top-0 z-50 h-screen w-full translate-x-0 translate-y-0 gap-0 overflow-hidden border-white/15 bg-[#0C0C0C] p-0 text-white data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-right-full sm:max-w-[480px] sm:rounded-none"
+          className="fixed inset-0 z-50 h-screen w-full translate-x-0 translate-y-0 gap-0 overflow-hidden border-white/15 bg-[#0C0C0C] p-0 text-white data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-right-full sm:left-auto sm:right-0 sm:max-w-[560px] sm:rounded-none lg:inset-y-auto lg:left-1/2 lg:right-auto lg:top-1/2 lg:h-[86vh] lg:max-h-[900px] lg:w-[min(1140px,94vw)] lg:max-w-none lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-3xl lg:data-[state=closed]:zoom-out-95 lg:data-[state=open]:zoom-in-95"
           aria-label="Create event drawer"
         >
-          <div className="flex h-full flex-col">
-            <div className="border-b border-white/10 p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white">Create Event</h3>
-                <span className="text-xs text-zinc-400">Step {createStep} of 3</span>
+          <div className="flex h-full flex-col lg:flex-row">
+            <aside className="hidden w-[380px] border-r border-white/10 bg-[radial-gradient(circle_at_20%_20%,rgba(232,25,44,0.28),transparent_45%),linear-gradient(180deg,#121212_0%,#0B0B0B_100%)] p-8 lg:flex lg:flex-col">
+              <p className="inline-flex w-fit items-center rounded-full border border-crimson/40 bg-crimson/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-crimson">
+                Event Builder
+              </p>
+              <h3 className="mt-4 text-2xl font-semibold text-white">Create your next Ignite experience</h3>
+              <p className="mt-2 text-sm text-zinc-300">Complete each step to publish a polished listing optimized for discovery and quick joins.</p>
+              <div className="mt-8 space-y-3">
+                <div className={`rounded-2xl border px-4 py-3 transition-colors ${createStep === 1 ? "border-crimson/45 bg-crimson/15" : "border-white/10 bg-white/[0.03]"}`}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-300">Step 1</p>
+                  <p className="mt-1 text-sm font-medium text-white">Basics and cover image</p>
+                </div>
+                <div className={`rounded-2xl border px-4 py-3 transition-colors ${createStep === 2 ? "border-crimson/45 bg-crimson/15" : "border-white/10 bg-white/[0.03]"}`}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-300">Step 2</p>
+                  <p className="mt-1 text-sm font-medium text-white">Time and location</p>
+                </div>
+                <div className={`rounded-2xl border px-4 py-3 transition-colors ${createStep === 3 ? "border-crimson/45 bg-crimson/15" : "border-white/10 bg-white/[0.03]"}`}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-300">Step 3</p>
+                  <p className="mt-1 text-sm font-medium text-white">Review and publish</p>
+                </div>
               </div>
-              <div className="h-2 rounded-full bg-white/10">
-                <div className="h-2 rounded-full bg-crimson transition-all duration-300" style={{ width: `${(createStep / 3) * 100}%` }} />
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5">
-              {createStep === 1 ? (
-                <div className="space-y-4">
-                  <input
-                    aria-label="Event name"
-                    value={createForm.title}
-                    onChange={(event) => setCreateForm((prev) => ({ ...prev, title: event.target.value }))}
-                    placeholder="Event name"
-                    className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
-                  />
-                  <textarea
-                    aria-label="Event description"
-                    value={createForm.description}
-                    onChange={(event) => setCreateForm((prev) => ({ ...prev, description: event.target.value }))}
-                    placeholder="Describe your event"
-                    className="min-h-28 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    {categoryOptions.map((category) => (
-                      <button
-                        key={category}
-                        type="button"
-                        aria-label={`Select ${category} category`}
-                        onClick={() => setCreateCategory(category)}
-                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                          createCategory === category ? "border-crimson bg-crimson/20 text-white" : "border-white/15 bg-white/5 text-zinc-300 hover:bg-white/10"
-                        }`}
-                      >
-                        {category}
-                      </button>
-                    ))}
-                  </div>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    aria-label="Upload cover image"
-                    onClick={() => fileInputRef.current?.click()}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        fileInputRef.current?.click();
-                      }
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      const file = event.dataTransfer.files?.[0] || null;
-                      if (file) setCreateImageFile(file);
-                    }}
-                    onDragOver={(event) => event.preventDefault()}
-                    className="rounded-2xl border border-dashed border-white/20 bg-white/5 p-4 transition-colors hover:bg-white/10"
-                  >
-                    {createImagePreview ? (
-                      <img src={createImagePreview} loading="lazy" alt="Event preview" className="h-44 w-full rounded-xl object-cover" />
-                    ) : (
-                      <p className="text-sm text-zinc-400">Drop image here or click to upload</p>
-                    )}
-                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => setCreateImageFile(event.target.files?.[0] || null)} />
+              <div className="mt-auto overflow-hidden rounded-2xl border border-white/15 bg-[#141414]">
+                <div className="relative h-44">
+                  {createImagePreview ? (
+                    <img src={createImagePreview} loading="lazy" alt="Event preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-br from-crimson/35 via-crimson/15 to-black" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                  <div className="absolute bottom-3 left-3">
+                    <p className="text-base font-semibold text-white">{createForm.title || "Event title"}</p>
+                    <p className="text-xs text-zinc-200">{createCategory}</p>
                   </div>
                 </div>
-              ) : null}
+              </div>
+            </aside>
 
-              {createStep === 2 ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <input
-                      type="datetime-local"
-                      aria-label="Start date and time"
-                      value={createForm.starts_at}
-                      onChange={(event) => setCreateForm((prev) => ({ ...prev, starts_at: event.target.value }))}
-                      className="h-11 rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white focus:border-crimson/60 focus:outline-none"
-                    />
-                    <input
-                      type="datetime-local"
-                      aria-label="End date and time"
-                      value={createForm.ends_at}
-                      onChange={(event) => setCreateForm((prev) => ({ ...prev, ends_at: event.target.value }))}
-                      className="h-11 rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white focus:border-crimson/60 focus:outline-none"
-                    />
+            <div className="flex h-full flex-1 flex-col">
+              <div className="border-b border-white/10 px-5 py-4 lg:px-8 lg:py-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-white lg:text-xl">Create Event</h3>
+                  <span className="text-xs text-zinc-400">Step {createStep} of 3</span>
+                </div>
+                <div className="h-2 rounded-full bg-white/10">
+                  <div className="h-2 rounded-full bg-crimson transition-all duration-300" style={{ width: `${(createStep / 3) * 100}%` }} />
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-5 py-5 lg:px-8 lg:py-6">
+                {createStep === 1 ? (
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">Event Name</p>
+                          <input
+                            aria-label="Event name"
+                            value={createForm.title}
+                            onChange={(event) => setCreateForm((prev) => ({ ...prev, title: event.target.value }))}
+                            placeholder="Event name"
+                            className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">Category</p>
+                          <div className="flex flex-wrap gap-2">
+                            {categoryOptions.map((category) => (
+                              <button
+                                key={category}
+                                type="button"
+                                aria-label={`Select ${category} category`}
+                                onClick={() => setCreateCategory(category)}
+                                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                  createCategory === category ? "border-crimson bg-crimson/20 text-white" : "border-white/15 bg-white/5 text-zinc-300 hover:bg-white/10"
+                                }`}
+                              >
+                                {category}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Upload cover image"
+                        onClick={() => fileInputRef.current?.click()}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            fileInputRef.current?.click();
+                          }
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const file = event.dataTransfer.files?.[0] || null;
+                          if (file) setCreateImageFile(file);
+                        }}
+                        onDragOver={(event) => event.preventDefault()}
+                        className="rounded-2xl border border-dashed border-white/20 bg-white/5 p-4 transition-colors hover:bg-white/10"
+                      >
+                        {createImagePreview ? (
+                          <img src={createImagePreview} loading="lazy" alt="Event preview" className="h-44 w-full rounded-xl object-cover" />
+                        ) : (
+                          <div className="flex h-44 items-center justify-center rounded-xl bg-white/[0.02]">
+                            <p className="text-sm text-zinc-400">Drop image here or click to upload</p>
+                          </div>
+                        )}
+                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => setCreateImageFile(event.target.files?.[0] || null)} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">Description</p>
+                      <textarea
+                        aria-label="Event description"
+                        value={createForm.description}
+                        onChange={(event) => setCreateForm((prev) => ({ ...prev, description: event.target.value }))}
+                        placeholder="Describe your event"
+                        className="min-h-32 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
+                      />
+                    </div>
                   </div>
-                  <label className="flex items-center justify-between rounded-xl border border-white/15 bg-white/5 px-3 py-2">
-                    <span className="inline-flex items-center gap-2 text-sm text-zinc-300">
-                      <Wifi className="h-4 w-4 text-crimson" />
-                      Online event
-                    </span>
-                    <input
-                      type="checkbox"
-                      aria-label="Toggle online event"
-                      checked={createIsOnline}
-                      onChange={(event) => setCreateIsOnline(event.target.checked)}
-                      className="h-4 w-4 accent-crimson"
-                    />
-                  </label>
-                  {!createIsOnline ? (
-                    <div className="space-y-3">
+                ) : null}
+
+                {createStep === 2 ? (
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">Start</p>
+                        <input
+                          type="datetime-local"
+                          aria-label="Start date and time"
+                          value={createForm.starts_at}
+                          onChange={(event) => setCreateForm((prev) => ({ ...prev, starts_at: event.target.value }))}
+                          className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white focus:border-crimson/60 focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">End</p>
+                        <input
+                          type="datetime-local"
+                          aria-label="End date and time"
+                          value={createForm.ends_at}
+                          onChange={(event) => setCreateForm((prev) => ({ ...prev, ends_at: event.target.value }))}
+                          className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white focus:border-crimson/60 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <label className="flex items-center justify-between rounded-xl border border-white/15 bg-white/5 px-3 py-2">
+                      <span className="inline-flex items-center gap-2 text-sm text-zinc-300">
+                        <Wifi className="h-4 w-4 text-crimson" />
+                        Online event
+                      </span>
                       <input
-                        aria-label="Location name"
-                        value={createForm.location_name}
-                        onChange={(event) => setCreateForm((prev) => ({ ...prev, location_name: event.target.value }))}
-                        placeholder="Location name"
-                        className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
+                        type="checkbox"
+                        aria-label="Toggle online event"
+                        checked={createIsOnline}
+                        onChange={(event) => setCreateIsOnline(event.target.checked)}
+                        className="h-4 w-4 accent-crimson"
                       />
-                      <input
-                        aria-label="Address"
-                        value={createForm.address}
-                        onChange={(event) => setCreateForm((prev) => ({ ...prev, address: event.target.value }))}
-                        placeholder="Address"
-                        className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
-                      />
-                      <div className="grid grid-cols-2 gap-3">
+                    </label>
+                    {!createIsOnline ? (
+                      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                        <input
+                          aria-label="Location name"
+                          value={createForm.location_name}
+                          onChange={(event) => setCreateForm((prev) => ({ ...prev, location_name: event.target.value }))}
+                          placeholder="Location name"
+                          className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
+                        />
+                        <input
+                          aria-label="Address"
+                          value={createForm.address}
+                          onChange={(event) => setCreateForm((prev) => ({ ...prev, address: event.target.value }))}
+                          placeholder="Address"
+                          className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
+                        />
                         <input
                           aria-label="City"
                           value={createForm.city}
@@ -1533,98 +1593,108 @@ export function EventsSection() {
                           className="h-11 rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
                         />
                       </div>
+                    ) : null}
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <button
+                        type="button"
+                        aria-label="Use current location"
+                        onClick={() => void handleUseCurrentLocation()}
+                        disabled={locationLoading}
+                        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-medium text-zinc-100 transition-colors hover:bg-white/10 disabled:opacity-60"
+                      >
+                        {locationLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4 text-crimson" />}
+                        Use my location
+                      </button>
+                      <input
+                        type="number"
+                        min={1}
+                        aria-label="Maximum attendees"
+                        value={createForm.capacity}
+                        onChange={(event) => setCreateForm((prev) => ({ ...prev, capacity: event.target.value }))}
+                        placeholder="Max attendees"
+                        className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
+                      />
                     </div>
-                  ) : null}
-                  <button
-                    type="button"
-                    aria-label="Use current location"
-                    onClick={() => void handleUseCurrentLocation()}
-                    disabled={locationLoading}
-                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-medium text-zinc-100 transition-colors hover:bg-white/10 disabled:opacity-60"
-                  >
-                    {locationLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4 text-crimson" />}
-                    Use my location
-                  </button>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-zinc-300">Lat: {createForm.latitude || "Not set"}</div>
-                    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-zinc-300">Lng: {createForm.longitude || "Not set"}</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-zinc-300">Lat: {createForm.latitude || "Not set"}</div>
+                      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-zinc-300">Lng: {createForm.longitude || "Not set"}</div>
+                    </div>
                   </div>
-                  <input
-                    type="number"
-                    min={1}
-                    aria-label="Maximum attendees"
-                    value={createForm.capacity}
-                    onChange={(event) => setCreateForm((prev) => ({ ...prev, capacity: event.target.value }))}
-                    placeholder="Max attendees"
-                    className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-crimson/60 focus:outline-none"
-                  />
-                </div>
-              ) : null}
+                ) : null}
 
-              {createStep === 3 ? (
-                <div className="space-y-4">
-                  <div className="overflow-hidden rounded-2xl border border-white/15 bg-[#141414]">
-                    <div className="relative h-44">
-                      {createImagePreview ? (
-                        <img src={createImagePreview} loading="lazy" alt="Preview cover" className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="h-full w-full bg-gradient-to-br from-crimson/30 to-black" />
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                      <div className="absolute bottom-3 left-3">
-                        <p className="text-lg font-semibold text-white">{createForm.title || "Event title"}</p>
-                        <p className="text-xs text-zinc-200">{createCategory}</p>
+                {createStep === 3 ? (
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+                    <div className="overflow-hidden rounded-2xl border border-white/15 bg-[#141414]">
+                      <div className="relative h-52">
+                        {createImagePreview ? (
+                          <img src={createImagePreview} loading="lazy" alt="Preview cover" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full bg-gradient-to-br from-crimson/30 to-black" />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                        <div className="absolute bottom-3 left-3">
+                          <p className="text-lg font-semibold text-white">{createForm.title || "Event title"}</p>
+                          <p className="text-xs text-zinc-200">{createCategory}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2 p-4 text-sm text-zinc-300">
+                        <p>{createForm.description || "Event description"}</p>
+                        <p>{toDisplayDateTime(createForm.starts_at)} - {toDisplayDateTime(createForm.ends_at)}</p>
+                        <p>{createIsOnline ? "Online Event" : [createForm.location_name, createForm.city, createForm.country].filter(Boolean).join(", ")}</p>
                       </div>
                     </div>
-                    <div className="space-y-2 p-4 text-sm text-zinc-300">
-                      <p>{createForm.description || "Event description"}</p>
-                      <p>{toDisplayDateTime(createForm.starts_at)} - {toDisplayDateTime(createForm.ends_at)}</p>
-                      <p>{createIsOnline ? "Online Event" : [createForm.location_name, createForm.city, createForm.country].filter(Boolean).join(", ")}</p>
+                    <div className="rounded-2xl border border-white/15 bg-white/[0.03] p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">Publish Checklist</p>
+                      <div className="mt-3 space-y-2 text-sm text-zinc-300">
+                        <p className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">Title and description added</p>
+                        <p className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">Date and timing selected</p>
+                        <p className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">{createIsOnline ? "Online event enabled" : "Venue details filled"}</p>
+                      </div>
                     </div>
                   </div>
+                ) : null}
+
+                {locationError ? <p className="mt-4 text-sm text-rose-400">{locationError}</p> : null}
+                {createError ? <p className="mt-2 text-sm text-rose-400">{createError}</p> : null}
+              </div>
+
+              <div className="border-t border-white/10 px-5 py-4 lg:px-8 lg:py-5">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    aria-label="Previous step"
+                    disabled={createStep === 1}
+                    onClick={() => setCreateStep((prev) => (prev > 1 ? ((prev - 1) as CreateStep) : prev))}
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-zinc-200 transition-colors hover:bg-white/10 disabled:opacity-40"
+                  >
+                    <ChevronRight className="h-4 w-4 rotate-180" />
+                    Back
+                  </button>
+
+                  {createStep < 3 ? (
+                    <button
+                      type="button"
+                      aria-label="Next step"
+                      onClick={() => setCreateStep((prev) => (prev < 3 ? ((prev + 1) as CreateStep) : prev))}
+                      disabled={(createStep === 1 && !canProceedToStep2) || (createStep === 2 && !canProceedToStep3)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-crimson/50 bg-crimson px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label="Submit event"
+                      disabled={isCreatingEvent || isUploadingImage}
+                      onClick={() => void handleCreateEvent()}
+                      className="inline-flex items-center gap-2 rounded-xl border border-crimson/50 bg-crimson px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+                    >
+                      {isCreatingEvent || isUploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      {isUploadingImage ? "Uploading image..." : "Submit Event"}
+                    </button>
+                  )}
                 </div>
-              ) : null}
-
-              {locationError ? <p className="mt-4 text-sm text-rose-400">{locationError}</p> : null}
-              {createError ? <p className="mt-2 text-sm text-rose-400">{createError}</p> : null}
-            </div>
-
-            <div className="border-t border-white/10 p-5">
-              <div className="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  aria-label="Previous step"
-                  disabled={createStep === 1}
-                  onClick={() => setCreateStep((prev) => (prev > 1 ? ((prev - 1) as CreateStep) : prev))}
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-zinc-200 transition-colors hover:bg-white/10 disabled:opacity-40"
-                >
-                  <ChevronRight className="h-4 w-4 rotate-180" />
-                  Back
-                </button>
-
-                {createStep < 3 ? (
-                  <button
-                    type="button"
-                    aria-label="Next step"
-                    onClick={() => setCreateStep((prev) => (prev < 3 ? ((prev + 1) as CreateStep) : prev))}
-                    disabled={(createStep === 1 && !canProceedToStep2) || (createStep === 2 && !canProceedToStep3)}
-                    className="inline-flex items-center gap-2 rounded-xl border border-crimson/50 bg-crimson px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    aria-label="Submit event"
-                    disabled={isCreatingEvent || isUploadingImage}
-                    onClick={() => void handleCreateEvent()}
-                    className="inline-flex items-center gap-2 rounded-xl border border-crimson/50 bg-crimson px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-                  >
-                    {isCreatingEvent || isUploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                    {isUploadingImage ? "Uploading image..." : "Submit Event"}
-                  </button>
-                )}
               </div>
             </div>
           </div>
