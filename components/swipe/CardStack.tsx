@@ -25,7 +25,7 @@ export function CardStack() {
       setCards(discoverProfiles);
       return;
     }
-    void refreshDiscover({ limit: 24 });
+    void refreshDiscover({ limit: 10 });
   }, [discoverProfiles, refreshDiscover]);
 
   // Motion Values for the top card
@@ -242,7 +242,7 @@ export function CardStack() {
         <p className="font-mono text-zinc-500 text-sm">Check back later for more matches.</p>
         <button 
           onClick={() => {
-            void refreshDiscover({ limit: 24 });
+            void refreshDiscover({ limit: 10 });
           }} 
           className="mt-6 px-6 py-2 bg-crimson text-white font-bold rounded-full hover:bg-crimson/80 transition-colors"
         >

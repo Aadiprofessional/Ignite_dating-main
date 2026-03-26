@@ -5,6 +5,7 @@ import { Flame, MessageCircle, Search, User, Users, Sparkles, Compass, ShieldChe
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { connectChatSocket, disconnectChatSocket } from "@/lib/chatSocket";
@@ -47,6 +48,69 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     };
     void run();
   }, [isHydrated, session?.accessToken, hydrateFromApi, refreshOnboardingStatus, refreshWallet]);
+
+  useEffect(() => {
+    if (!isHydrated || !session?.accessToken || !currentUser?.id) return;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) return;
+    const userId = currentUser.id;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const channel = supabase.channel(`wallet-live-${userId}`);
+    let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefreshWallet = () => {
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+      refreshTimeout = setTimeout(() => {
+        void refreshWallet();
+      }, 250);
+    };
+    const extractPayloadUserId = (payload: { new: Record<string, unknown> | null; old: Record<string, unknown> | null }) => {
+      const record = payload.new || payload.old || {};
+      const userIdCandidate =
+        (typeof record.user_id === "string" && record.user_id) ||
+        (typeof record.uid === "string" && record.uid) ||
+        (typeof record.owner_id === "string" && record.owner_id) ||
+        (typeof record.profile_id === "string" && record.profile_id) ||
+        (typeof record.subscriber_id === "string" && record.subscriber_id) ||
+        "";
+      return userIdCandidate;
+    };
+    const tableCandidates = [
+      "wallets",
+      "user_wallets",
+      "coins",
+      "user_coins",
+      "coin_transactions",
+      "subscriptions",
+      "user_subscriptions",
+    ];
+    for (const table of tableCandidates) {
+      channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table },
+        (payload: { new: Record<string, unknown> | null; old: Record<string, unknown> | null }) => {
+          const payloadUserId = extractPayloadUserId(payload);
+          if (payloadUserId && payloadUserId !== userId) return;
+          scheduleRefreshWallet();
+        }
+      );
+    }
+    channel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        scheduleRefreshWallet();
+      }
+    });
+    return () => {
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+      void supabase.removeChannel(channel);
+    };
+  }, [isHydrated, session?.accessToken, currentUser?.id, refreshWallet]);
 
   useEffect(() => {
     if (!isHydrated) return;

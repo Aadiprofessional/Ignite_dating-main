@@ -9,7 +9,9 @@ import {
   AuthSession,
   ChatListItem,
   createClientId,
+  DiscoverOptions,
   IncomingLike,
+  PeopleSearchOptions,
   WalletInfo,
   mapApiDiscoverProfile,
   mapApiChatListItem,
@@ -76,7 +78,7 @@ interface AppState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   hydrateFromApi: () => Promise<void>;
-  refreshDiscover: (options?: { limit?: number; university_mode?: 'all' | 'same_university'; search?: string }) => Promise<void>;
+  refreshDiscover: (options?: DiscoverOptions & PeopleSearchOptions) => Promise<void>;
   sendSwipe: (targetId: string, action: SwipeAction | 'pass') => Promise<SwipeResponse | null>;
   refreshIncomingLikes: (options?: { limit?: number; offset?: number }) => Promise<void>;
   respondIncomingLike: (swiperUserId: string, decision: 'accept' | 'reject') => Promise<SwipeResponse | null>;
@@ -330,7 +332,7 @@ export const useStore = create<AppState>()(
           }));
         }
         await Promise.allSettled([
-          get().refreshDiscover({ limit: 20 }),
+          get().refreshDiscover({ limit: 10 }),
           get().refreshMatches(),
           get().refreshNotifications(30),
           get().refreshIncomingLikes({ limit: 20, offset: 0 }),
@@ -370,7 +372,7 @@ export const useStore = create<AppState>()(
             accountState: accountState || state.accountState,
           }));
           await Promise.all([
-            get().refreshDiscover({ limit: 20 }),
+            get().refreshDiscover({ limit: 10 }),
             get().refreshMatches(),
             get().refreshNotifications(30),
             get().refreshIncomingLikes({ limit: 20, offset: 0 }),
@@ -386,12 +388,38 @@ export const useStore = create<AppState>()(
         }
       },
 
-      refreshDiscover: async (options = { limit: 20 }) => {
+      refreshDiscover: async (options = { limit: 10 }) => {
         const token = get().session?.accessToken;
         if (!token) return;
         try {
-          const discover = await api.discover(token, options);
-          const profiles = pickPayloadArray(discover.data, 'profiles').map((profile) =>
+          const hasSearchQuery = typeof options.q === 'string' && options.q.trim().length > 0;
+          const hasAdvancedFilters =
+            Boolean(options.university_ids?.length) ||
+            typeof options.min_age === 'number' ||
+            typeof options.max_age === 'number' ||
+            Boolean(options.hobbies?.length) ||
+            Boolean(options.cities?.length) ||
+            Boolean(options.countries?.length) ||
+            typeof options.offset === 'number';
+          const shouldUsePeopleSearch = hasSearchQuery || hasAdvancedFilters;
+          const response = shouldUsePeopleSearch
+            ? await api.peopleSearch(token, {
+                q: options.q || options.search,
+                university_ids: options.university_ids,
+                min_age: options.min_age,
+                max_age: options.max_age,
+                hobbies: options.hobbies,
+                cities: options.cities,
+                countries: options.countries,
+                limit: options.limit,
+                offset: options.offset,
+              })
+            : await api.discover(token, {
+                limit: options.limit,
+                university_mode: options.university_mode,
+                search: options.search,
+              });
+          const profiles = pickPayloadArray(response.data, 'profiles').map((profile) =>
             mapApiDiscoverProfile(profile as Record<string, unknown>)
           );
           set({ discoverProfiles: profiles });

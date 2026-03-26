@@ -68,6 +68,24 @@ export interface SignupPayload {
   birthdate?: string;
 }
 
+export interface DiscoverOptions {
+  limit?: number;
+  university_mode?: 'all' | 'same_university';
+  search?: string;
+}
+
+export interface PeopleSearchOptions {
+  q?: string;
+  university_ids?: string[];
+  min_age?: number;
+  max_age?: number;
+  hobbies?: string[];
+  cities?: string[];
+  countries?: string[];
+  limit?: number;
+  offset?: number;
+}
+
 export interface EventRecord {
   id: string;
   creator_id?: string;
@@ -529,11 +547,18 @@ export const mapApiDiscoverProfile = (item: Record<string, unknown>): Profile =>
     id: pickString((item as { user_id?: string }).user_id || profile.user_id || profile.id || item.id, createClientId()),
     name,
     username: pickString(profile.username),
-    age: calcAge(pickString(profile.birth_date) || pickString(profile.birthdate)),
+    age:
+      typeof profile.age === 'number'
+        ? profile.age
+        : calcAge(pickString(profile.birth_date) || pickString(profile.birthdate)),
     distance: Math.round(pickNumber(profile.distance_km, 0)),
     bio: pickString(profile.bio),
     photos: images.length ? images : ['https://picsum.photos/seed/ignite-discover/400/600'],
-    interests: pickArray<string>(profile.interests),
+    interests: (() => {
+      const interests = pickArray<string>(profile.interests).filter(Boolean);
+      if (interests.length) return interests;
+      return pickArray<string>(profile.hobbies).filter(Boolean);
+    })(),
     compatibility: Math.max(70, Math.min(99, Math.round(pickNumber(profile.compatibility_score, 85)))),
     job: pickString(profile.occupation, 'Member'),
     education: pickString(profile.education),
@@ -772,14 +797,30 @@ export const api = {
     }),
   discover: async (
     token: string,
-    options?: { limit?: number; university_mode?: 'all' | 'same_university'; search?: string }
+    options?: DiscoverOptions
   ) => {
-    const limit = options?.limit ?? 20;
+    const limit = Math.max(1, Math.min(10, options?.limit ?? 10));
     const params = new URLSearchParams({ limit: String(limit) });
     if (options?.university_mode) params.set('university_mode', options.university_mode);
     if (options?.search?.trim()) params.set('search', options.search.trim());
     return apiCall<{ profiles?: Record<string, unknown>[] }>({
       path: `/api/discover?${params.toString()}`,
+      token,
+    });
+  },
+  peopleSearch: async (token: string, options?: PeopleSearchOptions) => {
+    const params = new URLSearchParams();
+    if (options?.q?.trim()) params.set('q', options.q.trim());
+    if (options?.university_ids?.length) params.set('university_ids', options.university_ids.join(','));
+    if (typeof options?.min_age === 'number') params.set('min_age', String(options.min_age));
+    if (typeof options?.max_age === 'number') params.set('max_age', String(options.max_age));
+    if (options?.hobbies?.length) params.set('hobbies', options.hobbies.join(','));
+    if (options?.cities?.length) params.set('cities', options.cities.join(','));
+    if (options?.countries?.length) params.set('countries', options.countries.join(','));
+    params.set('limit', String(Math.max(1, Math.min(100, options?.limit ?? 20))));
+    params.set('offset', String(Math.max(0, options?.offset ?? 0)));
+    return apiCall<{ profiles?: Record<string, unknown>[]; pagination?: Record<string, unknown> }>({
+      path: `/api/people/search?${params.toString()}`,
       token,
     });
   },

@@ -1,46 +1,41 @@
 "use client";
 
 import { X } from "lucide-react";
-import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { Dispatch, SetStateAction } from "react";
+import type { UniversityOption } from "@/lib/api";
+
+export interface DiscoverSearchFilters {
+  universityIds: string[];
+  minAge: string;
+  maxAge: string;
+  hobbies: string;
+  cities: string;
+}
 
 interface FilterDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  filters: DiscoverSearchFilters;
+  setFilters: Dispatch<SetStateAction<DiscoverSearchFilters>>;
+  universityOptions: UniversityOption[];
+  onApply: () => void;
+  onReset: () => void;
 }
 
-export function FilterDrawer({ isOpen, onClose }: FilterDrawerProps) {
-  const [distance, setDistance] = useState([10]);
-  const [ageRange, setAgeRange] = useState([18, 35]);
-  const [heightRange, setHeightRange] = useState([150, 190]);
-  const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
-  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
-
-  const genders = ["Men", "Women", "Non-binary"];
-  const goals = ["Casual", "Serious", "Friends", "Open"];
-
-  const toggleGender = (gender: string) => {
-    if (selectedGenders.includes(gender)) {
-      setSelectedGenders(selectedGenders.filter((g) => g !== gender));
-    } else {
-      setSelectedGenders([...selectedGenders, gender]);
-    }
-  };
-
-  const toggleGoal = (goal: string) => {
-    if (selectedGoals.includes(goal)) {
-      setSelectedGoals(selectedGoals.filter((g) => g !== goal));
-    } else {
-      setSelectedGoals([...selectedGoals, goal]);
-    }
-  };
-
+export function FilterDrawer({
+  isOpen,
+  onClose,
+  filters,
+  setFilters,
+  universityOptions,
+  onApply,
+  onReset,
+}: FilterDrawerProps) {
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -49,7 +44,6 @@ export function FilterDrawer({ isOpen, onClose }: FilterDrawerProps) {
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
           />
 
-          {/* Drawer */}
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
@@ -70,96 +64,98 @@ export function FilterDrawer({ isOpen, onClose }: FilterDrawerProps) {
             </div>
 
             <div className="space-y-8 pb-24">
-              {/* Distance */}
-              <div className="space-y-4">
-                <div className="flex justify-between text-sm">
-                  <span className="font-mono text-zinc-400">Maximum Distance</span>
-                  <span className="font-bold text-crimson">{distance} km</span>
+              <div className="space-y-2">
+                <label className="block text-sm font-mono text-zinc-400">Universities</label>
+                <div className="max-h-44 space-y-2 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 p-3">
+                  {universityOptions.length === 0 ? (
+                    <p className="text-xs text-zinc-500">No universities available.</p>
+                  ) : (
+                    universityOptions.map((university) => {
+                      const checked = filters.universityIds.includes(university.id);
+                      return (
+                        <label key={university.id} className="flex items-center gap-2 text-sm text-zinc-200">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setFilters((current) => ({
+                                ...current,
+                                universityIds: checked
+                                  ? current.universityIds.filter((id) => id !== university.id)
+                                  : [...current.universityIds, university.id],
+                              }))
+                            }
+                            className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-crimson focus:ring-crimson"
+                          />
+                          <span>{university.name}</span>
+                        </label>
+                      );
+                    })
+                  )}
                 </div>
-                <Slider
-                  defaultValue={[10]}
-                  max={100}
-                  step={1}
-                  value={distance}
-                  onValueChange={setDistance}
-                  className="py-4"
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="block text-sm font-mono text-zinc-400">Min age</label>
+                  <input
+                    type="number"
+                    min={18}
+                    max={99}
+                    value={filters.minAge}
+                    onChange={(e) => setFilters((current) => ({ ...current, minAge: e.target.value }))}
+                    placeholder="21"
+                    className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-crimson/50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-mono text-zinc-400">Max age</label>
+                  <input
+                    type="number"
+                    min={18}
+                    max={99}
+                    value={filters.maxAge}
+                    onChange={(e) => setFilters((current) => ({ ...current, maxAge: e.target.value }))}
+                    placeholder="28"
+                    className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-crimson/50"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-mono text-zinc-400">Hobbies (comma-separated)</label>
+                <input
+                  type="text"
+                  value={filters.hobbies}
+                  onChange={(e) => setFilters((current) => ({ ...current, hobbies: e.target.value }))}
+                  placeholder="Music,Travel"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-crimson/50"
                 />
               </div>
 
-              {/* Age Range */}
-              <div className="space-y-4">
-                <div className="flex justify-between text-sm">
-                  <span className="font-mono text-zinc-400">Age Range</span>
-                  <span className="font-bold text-crimson">
-                    {ageRange[0]} - {ageRange[1]}
-                  </span>
-                </div>
-                <Slider
-                  defaultValue={[18, 35]}
-                  max={60}
-                  min={18}
-                  step={1}
-                  value={ageRange}
-                  onValueChange={setAgeRange}
-                  className="py-4"
+              <div className="space-y-2">
+                <label className="block text-sm font-mono text-zinc-400">Cities (comma-separated)</label>
+                <input
+                  type="text"
+                  value={filters.cities}
+                  onChange={(e) => setFilters((current) => ({ ...current, cities: e.target.value }))}
+                  placeholder="Mumbai,Delhi"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-crimson/50"
                 />
               </div>
 
-              {/* Gender */}
-              <div className="space-y-3">
-                <span className="font-mono text-sm text-zinc-400">Show me</span>
-                <div className="flex flex-wrap gap-2">
-                  {genders.map((gender) => (
-                    <button
-                      key={gender}
-                      onClick={() => toggleGender(gender)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${
-                        selectedGenders.includes(gender)
-                          ? "bg-crimson border-crimson text-white"
-                          : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700"
-                      }`}
-                    >
-                      {gender}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Relationship Goals */}
-              <div className="space-y-3">
-                <span className="font-mono text-sm text-zinc-400">Relationship Goals</span>
-                <div className="flex flex-wrap gap-2">
-                  {goals.map((goal) => (
-                    <button
-                      key={goal}
-                      onClick={() => toggleGoal(goal)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${
-                        selectedGoals.includes(goal)
-                          ? "bg-crimson border-crimson text-white"
-                          : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700"
-                      }`}
-                    >
-                      {goal}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
               <div className="pt-4 flex gap-4">
                 <button
-                  onClick={() => {
-                    setDistance([10]);
-                    setAgeRange([18, 35]);
-                    setSelectedGenders([]);
-                    setSelectedGoals([]);
-                  }}
+                  onClick={onReset}
                   className="flex-1 py-4 rounded-full border border-zinc-800 font-bold text-zinc-400 hover:bg-zinc-900 transition-colors"
                 >
                   Reset
                 </button>
                 <button
-                  onClick={onClose}
+                  onClick={() => {
+                    onApply();
+                    onClose();
+                  }}
                   className="flex-1 py-4 rounded-full bg-crimson font-bold text-white shadow-[0_0_20px_rgba(232,25,44,0.4)] hover:bg-crimson/90 transition-colors"
                 >
                   Apply Filters

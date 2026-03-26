@@ -3,39 +3,16 @@
 import { Profile } from "@/lib/mockProfiles";
 import { motion } from "framer-motion";
 import { Heart } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 interface ProfileGridProps {
   profiles: Profile[];
-  onLoadMore: () => void;
   onLike: (profileId: string) => Promise<void>;
 }
 
-export function ProfileGrid({ profiles, onLoadMore, onLike }: ProfileGridProps) {
-  const observerTarget = useRef<HTMLDivElement>(null);
+export function ProfileGrid({ profiles, onLike }: ProfileGridProps) {
   const [likedProfiles, setLikedProfiles] = useState<Set<string>>(new Set());
   const [loadingLikeId, setLoadingLikeId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          onLoadMore();
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
-
-    return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current);
-      }
-    };
-  }, [onLoadMore]);
 
   const toggleLike = async (id: string) => {
     if (loadingLikeId) return;
@@ -131,8 +108,8 @@ export function ProfileGrid({ profiles, onLoadMore, onLike }: ProfileGridProps) 
       </div>
       
       {/* Loading Trigger */}
-      <div ref={observerTarget} className="h-10 flex items-center justify-center mt-8">
-        <div className="w-6 h-6 border-2 border-crimson border-t-transparent rounded-full animate-spin" />
+      <div className="h-10 flex items-center justify-center mt-8">
+        <span className="text-xs font-mono uppercase tracking-[0.18em] text-zinc-500">End of results</span>
       </div>
     </div>
   );
