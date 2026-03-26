@@ -1149,7 +1149,7 @@ export function EventsSection() {
       </div>
 
       <Dialog open={calendarModalOpen} onOpenChange={setCalendarModalOpen}>
-        <DialogContent className="border-white/15 bg-[#0C0C0C] p-0 text-white sm:max-w-3xl">
+        <DialogContent className="border-white/15 bg-[#0C0C0C] p-0 text-white sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle className="sr-only">Select event dates</DialogTitle>
             <DialogDescription className="sr-only">Choose a start and end date and browse events in calendar view.</DialogDescription>
@@ -1186,7 +1186,7 @@ export function EventsSection() {
                 <p className="mt-1 font-medium">{endDate || "Not selected"}</p>
               </button>
             </div>
-            <div className="grid grid-cols-1 gap-3 rounded-2xl border border-white/12 bg-black/25 p-2.5 lg:grid-cols-[1fr_280px]">
+            <div className="grid grid-cols-1 gap-3 rounded-2xl border border-white/12 bg-black/25 p-2.5 lg:grid-cols-[minmax(0,1fr)_360px]">
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <button

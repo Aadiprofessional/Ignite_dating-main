@@ -458,7 +458,7 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
           </p>
         ) : null}
 
-        <div className="mx-auto mt-8 w-full max-w-5xl rounded-3xl border border-white/12 bg-gradient-to-b from-white/[0.04] to-white/[0.02] p-3 md:p-4">
+        <div className="mx-auto mt-8 w-full max-w-7xl rounded-3xl border border-white/12 bg-gradient-to-b from-white/[0.04] to-white/[0.02] p-3 md:p-4">
           <div className="mb-2 flex items-center justify-between">
             <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-zinc-300">
               <CalendarDays className="h-4 w-4 text-crimson" />
@@ -488,7 +488,7 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
               <p className="mt-1 font-medium">{endDate || "Not selected"}</p>
             </button>
           </div>
-          <div className="mt-2 grid grid-cols-1 gap-3 rounded-2xl border border-white/12 bg-black/25 p-2.5 lg:grid-cols-[1fr_300px]">
+          <div className="mt-2 grid grid-cols-1 gap-3 rounded-2xl border border-white/12 bg-black/25 p-2.5 lg:grid-cols-[minmax(0,1fr)_420px]">
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <button

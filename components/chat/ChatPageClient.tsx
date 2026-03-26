@@ -201,6 +201,47 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     [match?.otherUserId, myUserId]
   );
 
+  const extractCallId = useCallback((payload: Record<string, unknown> | null | undefined) => {
+    if (!payload) return null;
+    if (typeof payload.call_id === "string") return payload.call_id;
+    if (typeof payload.callId === "string") return payload.callId;
+    if (typeof payload.id === "string") return payload.id;
+    return null;
+  }, []);
+
+  const extractMatchId = useCallback((payload: Record<string, unknown> | null | undefined) => {
+    if (!payload) return null;
+    if (typeof payload.match_id === "string") return payload.match_id;
+    if (typeof payload.matchId === "string") return payload.matchId;
+    return null;
+  }, []);
+
+  const shouldHandleCallPayload = useCallback(
+    (payload: Record<string, unknown>) => {
+      const payloadMatchId = extractMatchId(payload);
+      if (payloadMatchId) return payloadMatchId === id;
+      const payloadCallId = extractCallId(payload);
+      if (payloadCallId && (payloadCallId === incomingCallId || payloadCallId === activeCallId)) return true;
+      const remoteUserId = resolveRemoteUserId(payload, null);
+      if (remoteUserId && match?.otherUserId && remoteUserId === match.otherUserId) return true;
+      return false;
+    },
+    [activeCallId, extractCallId, extractMatchId, id, incomingCallId, match?.otherUserId, resolveRemoteUserId]
+  );
+
+  const normalizeSessionDescription = useCallback((value: unknown, fallbackType: RTCSdpType) => {
+    if (typeof value === "string") {
+      return { type: fallbackType, sdp: value };
+    }
+    if (!value || typeof value !== "object") return null;
+    const record = value as Record<string, unknown>;
+    const sdp = typeof record.sdp === "string" ? record.sdp : "";
+    if (!sdp) return null;
+    const rawType = typeof record.type === "string" ? record.type : fallbackType;
+    const type = rawType === "answer" ? "answer" : "offer";
+    return { type, sdp };
+  }, []);
+
   const normalizeMessage = useCallback(
     (item: ChatMessageRecord): ChatUiMessage => {
       const senderId = item.sender_id || "other";
@@ -531,32 +572,20 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
   );
 
   const extractOffer = useCallback((payload: Record<string, unknown>) => {
-    const payloadOffer = payload.offer;
-    if (payloadOffer && typeof payloadOffer === "object") {
-      const offerRecord = payloadOffer as Record<string, unknown>;
-      const sdp = typeof offerRecord.sdp === "string" ? offerRecord.sdp : "";
-      if (sdp) {
-        return { type: "offer" as RTCSdpType, sdp };
-      }
-    }
-    const sdp = typeof payload.sdp === "string" ? payload.sdp : "";
-    if (!sdp) return null;
-    return { type: "offer" as RTCSdpType, sdp };
-  }, []);
+    const fromOffer = normalizeSessionDescription(payload.offer, "offer");
+    if (fromOffer) return { type: "offer" as RTCSdpType, sdp: fromOffer.sdp };
+    const fromSdp = normalizeSessionDescription(payload.sdp, "offer");
+    if (fromSdp) return { type: "offer" as RTCSdpType, sdp: fromSdp.sdp };
+    return null;
+  }, [normalizeSessionDescription]);
 
   const extractAnswer = useCallback((payload: Record<string, unknown>) => {
-    const payloadAnswer = payload.answer;
-    if (payloadAnswer && typeof payloadAnswer === "object") {
-      const answerRecord = payloadAnswer as Record<string, unknown>;
-      const sdp = typeof answerRecord.sdp === "string" ? answerRecord.sdp : "";
-      if (sdp) {
-        return { type: "answer" as RTCSdpType, sdp };
-      }
-    }
-    const sdp = typeof payload.sdp === "string" ? payload.sdp : "";
-    if (!sdp) return null;
-    return { type: "answer" as RTCSdpType, sdp };
-  }, []);
+    const fromAnswer = normalizeSessionDescription(payload.answer, "answer");
+    if (fromAnswer) return { type: "answer" as RTCSdpType, sdp: fromAnswer.sdp };
+    const fromSdp = normalizeSessionDescription(payload.sdp, "answer");
+    if (fromSdp) return { type: "answer" as RTCSdpType, sdp: fromSdp.sdp };
+    return null;
+  }, [normalizeSessionDescription]);
 
   const applyPendingIceCandidates = useCallback(async (peer: RTCPeerConnection) => {
     if (!peer.remoteDescription || !pendingIceCandidatesRef.current.length) return;
@@ -804,10 +833,9 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     };
 
     const handleIncomingCall = (payload: Record<string, unknown>) => {
-      const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
-      if (payloadMatchId !== id) return;
+      if (!shouldHandleCallPayload(payload)) return;
       const parsedOffer = extractOffer(payload);
-      const callId = typeof payload.call_id === "string" ? payload.call_id : null;
+      const callId = extractCallId(payload);
       const remoteUserId = resolveRemoteUserId(payload, match?.otherUserId || null);
       setIncomingCallId(callId);
       setIncomingOffer(parsedOffer);
@@ -827,8 +855,12 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     };
 
     const handleCallAccepted = (payload: Record<string, unknown>) => {
-      if (typeof payload.call_id === "string") setActiveCallId(payload.call_id);
-      setOutgoingCallPhase("connecting");
+      if (!shouldHandleCallPayload(payload)) return;
+      const callId = extractCallId(payload);
+      if (callId) setActiveCallId(callId);
+      if (callStateRef.current === "calling") {
+        setOutgoingCallPhase("connecting");
+      }
       const answer = extractAnswer(payload);
       if (!answer || !peerRef.current) {
         setShowCallOverlay(true);
@@ -845,16 +877,14 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     };
 
     const handleCallRinging = (payload: Record<string, unknown>) => {
-      const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
-      if (payloadMatchId && payloadMatchId !== id) return;
+      if (!shouldHandleCallPayload(payload)) return;
       if (callStateRef.current === "calling") {
         setOutgoingCallPhase("ringing");
       }
     };
 
     const handleCallState = (payload: Record<string, unknown>) => {
-      const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
-      if (payloadMatchId && payloadMatchId !== id) return;
+      if (!shouldHandleCallPayload(payload)) return;
       const state = typeof payload.state === "string" ? payload.state.toLowerCase() : "";
       if (!state || callStateRef.current !== "calling") return;
       if (state.includes("ring")) {
@@ -875,12 +905,15 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     };
 
     const handleOffer = async (payload: Record<string, unknown>) => {
-      const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
-      if (payloadMatchId !== id) return;
+      if (!shouldHandleCallPayload(payload)) return;
       const offer = extractOffer(payload);
       if (!offer) return;
       const remoteUserId = resolveRemoteUserId(payload, match?.otherUserId || null);
+      const callId = extractCallId(payload);
       setIncomingOffer(offer);
+      if (callId) {
+        setIncomingCallId(callId);
+      }
       setIncomingTargetUserId(remoteUserId || null);
       setCallPeerUserId(remoteUserId || null);
       if (callStateRef.current === "active" || callStateRef.current === "calling") {
@@ -906,8 +939,7 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     };
 
     const handleAnswer = async (payload: Record<string, unknown>) => {
-      const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
-      if (payloadMatchId !== id || !peerRef.current) return;
+      if (!shouldHandleCallPayload(payload) || !peerRef.current) return;
       const answer = extractAnswer(payload);
       if (!answer) return;
       setCallPeerUserId(resolveRemoteUserId(payload, match?.otherUserId || null));
@@ -918,8 +950,7 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     };
 
     const handleIce = async (payload: Record<string, unknown>) => {
-      const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
-      if (payloadMatchId !== id) return;
+      if (!shouldHandleCallPayload(payload)) return;
       const candidate = payload.candidate as RTCIceCandidateInit | undefined;
       if (!candidate) return;
       const peer = peerRef.current;
@@ -1011,7 +1042,9 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     callPeerUserId,
     cleanupCall,
     ensurePeer,
+    extractCallId,
     extractAnswer,
+    extractMatchId,
     extractOffer,
     finalizeIncomingAcceptance,
     id,
@@ -1022,6 +1055,8 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     resolveRemoteUserId,
     setRemoteAnswerSafely,
     setRemoteOfferSafely,
+    shouldHandleCallPayload,
+    normalizeSessionDescription,
     refreshLatestMessages,
     session?.accessToken,
   ]);

@@ -1,150 +1,91 @@
 "use client";
 
-import { ConversationsList } from "@/components/matches/ConversationsList";
-import { NewMatchesRow } from "@/components/matches/NewMatchesRow";
 import { useStore } from "@/lib/store";
 import { motion } from "framer-motion";
-import { Check, Flame, Heart, X } from "lucide-react";
+import { CheckCircle2, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 export default function MatchesPage() {
-  const { matches, incomingLikes, refreshMatches, refreshIncomingLikes, respondIncomingLike } = useStore();
-  const [loadingSwipeId, setLoadingSwipeId] = useState<string | null>(null);
-  const hasMatches = matches.length > 0;
-  const hasMatchRequests = incomingLikes.length > 0;
+  const { matches, refreshMatches } = useStore();
+  const sortedMatches = useMemo(
+    () => [...matches].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
+    [matches]
+  );
 
   useEffect(() => {
-    void Promise.allSettled([refreshMatches(), refreshIncomingLikes({ limit: 20, offset: 0 })]);
-  }, [refreshMatches, refreshIncomingLikes]);
-
-  const handleRespond = async (swiperId: string, decision: "accept" | "reject") => {
-    setLoadingSwipeId(swiperId);
-    try {
-      await respondIncomingLike(swiperId, decision);
-    } finally {
-      setLoadingSwipeId(null);
-    }
-  };
+    void refreshMatches();
+  }, [refreshMatches]);
 
   return (
     <div className="min-h-screen bg-[#080808] pb-24 lg:pb-8">
-      {/* Header */}
       <header className="sticky top-0 z-20 bg-[#080808]/80 px-4 pb-4 pt-6 backdrop-blur-md lg:px-8">
         <div className="mx-auto w-full max-w-6xl">
           <h1 className="font-serif text-3xl font-bold text-white">
             Your Matches <span className="text-crimson">🔥</span>
           </h1>
+          <p className="mt-1 text-sm text-zinc-400">{sortedMatches.length} active connections</p>
         </div>
       </header>
 
-      {hasMatchRequests && (
-        <section className="mx-auto w-full max-w-6xl px-4 pt-6 lg:px-8">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-500">
-              Match Requests
-            </h2>
-            <span className="text-xs text-white/50">{incomingLikes.length} pending</span>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {incomingLikes.map((user, i) => (
-              <motion.div
-                key={user.swipeId}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                className="overflow-hidden rounded-2xl border border-white/10 bg-white/5"
-              >
-                <div className="relative h-40">
-                  <Image
-                    src={user.photos[0]}
-                    alt={user.name}
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-3">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-serif text-xl font-bold text-white">{user.name}</h3>
-                      <span className="text-xs text-white/80">{Math.round(user.distanceKm)} km</span>
-                    </div>
-                    <p className="line-clamp-1 text-xs text-white/70">
-                      {user.universityName || `${user.city}${user.city && user.country ? ", " : ""}${user.country}`}
-                    </p>
+      <section className="mx-auto w-full max-w-6xl px-4 pt-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {sortedMatches.map((match, i) => (
+            <motion.article
+              key={match.id}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04 }}
+              className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 via-white/[0.04] to-transparent shadow-[0_24px_70px_-28px_rgba(0,0,0,0.9)]"
+            >
+              <div className="relative h-56">
+                <Image src={match.avatar} alt={match.name} fill className="object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+                <div className="absolute left-4 right-4 top-4 flex items-center justify-between">
+                  <span className="rounded-full border border-white/30 bg-black/45 px-3 py-1 text-[10px] font-mono uppercase tracking-[0.14em] text-white/90">
+                    Match
+                  </span>
+                  {match.online ? (
+                    <span className="rounded-full border border-emerald-300/35 bg-emerald-400/20 px-2.5 py-1 text-[10px] font-semibold text-emerald-200">
+                      Online
+                    </span>
+                  ) : null}
+                </div>
+                <div className="absolute bottom-4 left-4 right-4">
+                  <div className="flex items-center gap-2">
+                    <h2 className="truncate font-serif text-2xl font-bold text-white">{match.name}</h2>
+                    {match.isVerified ? <CheckCircle2 className="h-4 w-4 text-sky-400" /> : null}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-3">
-                  <button
-                    onClick={() => void handleRespond(user.swiperId, "reject")}
-                    disabled={loadingSwipeId === user.swiperId}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-white/15 py-2 text-sm font-semibold text-white/80 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              </div>
+
+              <div className="space-y-4 p-4">
+                <p className="line-clamp-2 min-h-[40px] text-sm text-zinc-300">
+                  {match.lastMessage || "Say hi and start the conversation"}
+                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs text-zinc-400">
+                    <span>{new Date(match.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    {match.unreadCount > 0 ? (
+                      <span className="rounded-full bg-crimson px-2 py-0.5 text-[10px] font-bold text-white">
+                        {match.unreadCount} new
+                      </span>
+                    ) : null}
+                  </div>
+                  <Link
+                    href={`/messages/${match.id}`}
+                    className="inline-flex items-center gap-2 rounded-full bg-crimson px-4 py-2 text-sm font-semibold text-white transition-all hover:scale-[1.02] hover:bg-crimson/90"
                   >
-                    <X className="h-4 w-4" />
-                    Reject
-                  </button>
-                  <button
-                    onClick={() => void handleRespond(user.swiperId, "accept")}
-                    disabled={loadingSwipeId === user.swiperId}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-crimson py-2 text-sm font-semibold text-white transition-colors hover:bg-crimson/90 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <Check className="h-4 w-4" />
-                    Approve
-                  </button>
+                    <MessageCircle className="h-4 w-4" />
+                    Message
+                  </Link>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {hasMatches ? (
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 pt-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-8">
-          {/* New Matches */}
-          <section className="lg:sticky lg:top-24 lg:h-fit">
-            <h2 className="mb-2 px-4 font-mono text-xs font-bold uppercase tracking-wider text-zinc-500 lg:px-0">
-              New Matches
-            </h2>
-            <NewMatchesRow matches={matches} />
-          </section>
-
-          {/* Conversations */}
-          <section>
-            <h2 className="mb-2 px-4 font-mono text-xs font-bold uppercase tracking-wider text-zinc-500 lg:px-0">
-              Messages
-            </h2>
-            <ConversationsList matches={matches} />
-          </section>
+              </div>
+            </motion.article>
+          ))}
         </div>
-      ) : hasMatchRequests ? (
-        <div className="mx-auto flex w-full max-w-6xl px-4 pt-6 lg:px-8">
-          <div className="w-full rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="flex items-center gap-2 text-white">
-              <Heart className="h-4 w-4 text-crimson" />
-              <p className="text-sm font-semibold">No confirmed matches yet</p>
-            </div>
-            <p className="mt-1 text-sm text-white/60">
-              Approve a request above to create a match and start chatting.
-            </p>
-          </div>
-        </div>
-      ) : (
-        /* Empty State */
-        <div className="flex h-[70vh] flex-col items-center justify-center px-8 text-center">
-          <div className="w-24 h-24 bg-zinc-900 rounded-full flex items-center justify-center mb-6 animate-pulse">
-            <Flame size={48} className="text-zinc-700" />
-          </div>
-          <h2 className="font-serif font-bold text-2xl text-white mb-2">
-            No matches yet
-          </h2>
-          <p className="text-zinc-400 mb-8 max-w-xs">
-            Start swiping to find your perfect match. Don't be shy!
-          </p>
-          <Link href="/home" className="px-8 py-3 bg-crimson text-white font-bold rounded-full shadow-[0_0_20px_rgba(232,25,44,0.4)] hover:scale-105 transition-transform">
-            Start Swiping
-          </Link>
-        </div>
-      )}
+      </section>
     </div>
   );
 }
