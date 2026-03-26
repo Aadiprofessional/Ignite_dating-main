@@ -11,7 +11,7 @@ import { useStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { PhoneOff, PhoneIncoming, PhoneCall, X } from "lucide-react";
+import { Mic, MicOff, PhoneCall, PhoneIncoming, PhoneOff, Video, VideoOff, X } from "lucide-react";
 import type { Socket } from "socket.io-client";
 
 interface ChatPageClientProps {
@@ -54,7 +54,13 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
   const callStateRef = useRef<"idle" | "calling" | "incoming" | "active">("idle");
   const pendingIncomingAcceptRef = useRef(false);
   const acceptingIncomingRef = useRef(false);
+  const reconnectAttemptedRef = useRef(false);
   const [showCallOverlay, setShowCallOverlay] = useState(false);
+  const [isMicEnabled, setIsMicEnabled] = useState(true);
+  const [isCameraEnabled, setIsCameraEnabled] = useState(true);
+  const [localVideoActive, setLocalVideoActive] = useState(false);
+  const [remoteVideoActive, setRemoteVideoActive] = useState(false);
+  const [outgoingCallPhase, setOutgoingCallPhase] = useState<"idle" | "calling" | "ringing" | "connecting">("idle");
   const [composerText, setComposerText] = useState("");
   const [replyingTo, setReplyingTo] = useState<ChatUiMessage | null>(null);
   const [replySuggestions, setReplySuggestions] = useState<ReplySuggestionItem[]>([]);
@@ -300,6 +306,12 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     pendingIceCandidatesRef.current = [];
     pendingIncomingAcceptRef.current = false;
     acceptingIncomingRef.current = false;
+    reconnectAttemptedRef.current = false;
+    setIsMicEnabled(true);
+    setIsCameraEnabled(true);
+    setLocalVideoActive(false);
+    setRemoteVideoActive(false);
+    setOutgoingCallPhase("idle");
     setIncomingCallId(null);
     setActiveCallId(null);
     setCallState("idle");
@@ -310,10 +322,49 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     if (typeof window === "undefined" || typeof navigator === "undefined") {
       throw new Error("Camera and microphone are not available in this environment.");
     }
-    const constraints: MediaStreamConstraints = { video: true, audio: true };
     if (navigator.mediaDevices?.getUserMedia) {
-      return navigator.mediaDevices.getUserMedia(constraints);
+      const preferredConstraints: MediaStreamConstraints[] = [
+        {
+          video: {
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 },
+            frameRate: { ideal: 30, max: 60 },
+            facingMode: "user",
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: { ideal: 2 },
+            sampleRate: { ideal: 48000 },
+          },
+        },
+        {
+          video: {
+            width: { ideal: 960 },
+            height: { ideal: 540 },
+            frameRate: { ideal: 24, max: 30 },
+            facingMode: "user",
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        },
+        { video: true, audio: true },
+      ];
+      let lastError: unknown = null;
+      for (const constraints of preferredConstraints) {
+        try {
+          return await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError instanceof Error ? lastError : new Error("Unable to access camera or microphone.");
     }
+    const constraints: MediaStreamConstraints = { video: true, audio: true };
     type LegacyNavigator = Navigator & {
       getUserMedia?: (
         constraints: MediaStreamConstraints,
@@ -359,16 +410,59 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       if (peerRef.current) return peerRef.current;
       const stream = await requestMediaStream();
       localStreamRef.current = stream;
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      const localVideoTrack = stream.getVideoTracks()[0] || null;
+      const localAudioTrack = stream.getAudioTracks()[0] || null;
+      if (localVideoTrack) {
+        localVideoTrack.contentHint = "motion";
+        localVideoTrack.onended = () => setLocalVideoActive(false);
+      }
+      if (localAudioTrack) localAudioTrack.contentHint = "speech";
+      setLocalVideoActive(Boolean(localVideoTrack));
+      setIsCameraEnabled(localVideoTrack?.enabled ?? false);
+      setIsMicEnabled(localAudioTrack?.enabled ?? false);
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        void localVideoRef.current.play().catch(() => null);
+      }
       const peer = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        iceServers: [
+          {
+            urls: [
+              "stun:stun.l.google.com:19302",
+              "stun:stun1.l.google.com:19302",
+              "stun:stun2.l.google.com:19302",
+            ],
+          },
+        ],
+        iceCandidatePoolSize: 10,
       });
-      stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+      stream.getTracks().forEach((track) => {
+        const sender = peer.addTrack(track, stream);
+        if (track.kind !== "video") return;
+        const parameters = sender.getParameters();
+        const currentEncodings = parameters.encodings || [{}];
+        parameters.encodings = currentEncodings.map((encoding) => ({
+          ...encoding,
+          maxBitrate: 2_500_000,
+          maxFramerate: 30,
+        }));
+        void sender.setParameters(parameters).catch(() => null);
+      });
       peer.ontrack = (event) => {
         const [remoteStream] = event.streams;
         if (!remoteStream) return;
         remoteStreamRef.current = remoteStream;
-        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+        const remoteVideoTrack = remoteStream.getVideoTracks()[0] || null;
+        setRemoteVideoActive(Boolean(remoteVideoTrack));
+        if (remoteVideoTrack) {
+          remoteVideoTrack.onmute = () => setRemoteVideoActive(false);
+          remoteVideoTrack.onunmute = () => setRemoteVideoActive(true);
+          remoteVideoTrack.onended = () => setRemoteVideoActive(false);
+        }
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStream;
+          void remoteVideoRef.current.play().catch(() => null);
+        }
       };
       peer.onicecandidate = (event) => {
         if (!event.candidate || !socketRef.current) return;
@@ -377,6 +471,39 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
           target_user_id: targetUserId || match?.otherUserId,
           candidate: event.candidate,
         });
+      };
+      peer.onconnectionstatechange = () => {
+        if (!socketRef.current) return;
+        if (peer.connectionState === "connecting") {
+          setOutgoingCallPhase("connecting");
+        }
+        if (peer.connectionState === "connected") {
+          reconnectAttemptedRef.current = false;
+          setOutgoingCallPhase("idle");
+          setError(null);
+          return;
+        }
+        if (
+          (peer.connectionState === "failed" || peer.connectionState === "disconnected") &&
+          !reconnectAttemptedRef.current
+        ) {
+          reconnectAttemptedRef.current = true;
+          void (async () => {
+            try {
+              peer.restartIce();
+              const offer = await peer.createOffer({ iceRestart: true });
+              await peer.setLocalDescription(offer);
+              socketRef.current?.emit("webrtc_offer", {
+                match_id: id,
+                target_user_id: targetUserId || match?.otherUserId,
+                sdp: offer.sdp,
+              });
+              setOutgoingCallPhase("connecting");
+            } catch {
+              setError("Network is unstable. Trying to reconnect the call.");
+            }
+          })();
+        }
       };
       peerRef.current = peer;
       return peer;
@@ -566,6 +693,7 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
 
     const handleSocketConnect = () => {
       setIsSocketConnected(true);
+      void refreshMatches();
       void refreshLatestMessages();
     };
 
@@ -583,6 +711,9 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       if (payloadMatchId && payloadMatchId !== id) return;
       const normalized = normalizeMessage(messagePayload);
       appendOrUpdateMessage(normalized);
+      if (normalized.senderId === "other") {
+        setIsOnline(true);
+      }
       if (normalized.senderId === "other") {
         setUnreadCount((prev) => prev + 1);
       }
@@ -643,6 +774,9 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       if (payloadMatchId !== id) return;
       const senderId = typeof payload.user_id === "string" ? payload.user_id : "other";
       const isTypingPayload = typeof payload.is_typing === "boolean" ? payload.is_typing : true;
+      if (isTypingPayload) {
+        setIsOnline(true);
+      }
       setTypingUsers((prev) => {
         const next = new Set(prev);
         if (isTypingPayload) next.add(senderId);
@@ -664,8 +798,9 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       setIncomingCallId(callId);
       setIncomingOffer(parsedOffer);
       setIncomingTargetUserId(targetUserId);
+      setIsOnline(true);
       setCallState("incoming");
-      setShowCallOverlay(false);
+      setShowCallOverlay(true);
       if (pendingIncomingAcceptRef.current && parsedOffer?.sdp) {
         void (async () => {
           const peer = await ensurePeer(targetUserId);
@@ -678,6 +813,7 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
 
     const handleCallAccepted = (payload: Record<string, unknown>) => {
       if (typeof payload.call_id === "string") setActiveCallId(payload.call_id);
+      setOutgoingCallPhase("connecting");
       const answer = extractAnswer(payload);
       if (!answer || !peerRef.current) {
         setCallState("active");
@@ -687,10 +823,33 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       void (async () => {
         const applied = await setRemoteAnswerSafely(peerRef.current as RTCPeerConnection, answer);
         if (applied) {
+          setOutgoingCallPhase("connecting");
           setCallState("active");
           setShowCallOverlay(true);
         }
       })();
+    };
+
+    const handleCallRinging = (payload: Record<string, unknown>) => {
+      const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
+      if (payloadMatchId && payloadMatchId !== id) return;
+      if (callStateRef.current === "calling") {
+        setOutgoingCallPhase("ringing");
+      }
+    };
+
+    const handleCallState = (payload: Record<string, unknown>) => {
+      const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
+      if (payloadMatchId && payloadMatchId !== id) return;
+      const state = typeof payload.state === "string" ? payload.state.toLowerCase() : "";
+      if (!state || callStateRef.current !== "calling") return;
+      if (state.includes("ring")) {
+        setOutgoingCallPhase("ringing");
+      } else if (state.includes("connect")) {
+        setOutgoingCallPhase("connecting");
+      } else if (state.includes("call")) {
+        setOutgoingCallPhase("calling");
+      }
     };
 
     const handleCallRejected = () => {
@@ -736,6 +895,7 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       if (payloadMatchId !== id || !peerRef.current) return;
       const answer = extractAnswer(payload);
       if (!answer) return;
+      setOutgoingCallPhase("connecting");
       const applied = await setRemoteAnswerSafely(peerRef.current, answer);
       if (!applied) return;
       setCallState("active");
@@ -758,13 +918,31 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       }
     };
 
+    const getPresencePayloadUserId = (payload: Record<string, unknown>) => {
+      if (typeof payload.user_id === "string") return payload.user_id;
+      if (typeof payload.target_user_id === "string") return payload.target_user_id;
+      if (typeof payload.peer_user_id === "string") return payload.peer_user_id;
+      if (typeof payload.from_user_id === "string") return payload.from_user_id;
+      return "";
+    };
+
     const handleUserOnline = (payload: Record<string, unknown>) => {
-      const userId = typeof payload.user_id === "string" ? payload.user_id : "";
+      const userId = getPresencePayloadUserId(payload);
+      const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
+      if (payloadMatchId && payloadMatchId === id) {
+        setIsOnline(true);
+        return;
+      }
       if (userId && userId === match?.otherUserId) setIsOnline(true);
     };
 
     const handleUserOffline = (payload: Record<string, unknown>) => {
-      const userId = typeof payload.user_id === "string" ? payload.user_id : "";
+      const userId = getPresencePayloadUserId(payload);
+      const payloadMatchId = typeof payload.match_id === "string" ? payload.match_id : "";
+      if (payloadMatchId && payloadMatchId === id) {
+        setIsOnline(false);
+        return;
+      }
       if (userId && userId === match?.otherUserId) setIsOnline(false);
     };
 
@@ -781,6 +959,8 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     socket.on("call_accepted", handleCallAccepted);
     socket.on("call_rejected", handleCallRejected);
     socket.on("call_ended", handleCallEnded);
+    socket.on("call_ringing", handleCallRinging);
+    socket.on("call_state", handleCallState);
     socket.on("webrtc_offer", handleOffer);
     socket.on("webrtc_answer", handleAnswer);
     socket.on("webrtc_ice_candidate", handleIce);
@@ -801,6 +981,8 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       socket.off("call_accepted", handleCallAccepted);
       socket.off("call_rejected", handleCallRejected);
       socket.off("call_ended", handleCallEnded);
+      socket.off("call_ringing", handleCallRinging);
+      socket.off("call_state", handleCallState);
       socket.off("webrtc_offer", handleOffer);
       socket.off("webrtc_answer", handleAnswer);
       socket.off("webrtc_ice_candidate", handleIce);
@@ -819,6 +1001,7 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     incomingCallId,
     match?.otherUserId,
     normalizeMessage,
+    refreshMatches,
     setRemoteAnswerSafely,
     setRemoteOfferSafely,
     refreshLatestMessages,
@@ -838,6 +1021,19 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       cleanupCall();
     };
   }, [cleanupCall]);
+
+  useEffect(() => {
+    const localStream = localStreamRef.current;
+    const remoteStream = remoteStreamRef.current;
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      void localVideoRef.current.play().catch(() => null);
+    }
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+      void remoteVideoRef.current.play().catch(() => null);
+    }
+  }, [showCallOverlay, callState]);
 
   useEffect(() => {
     if (!session?.accessToken || !messages.length) return;
@@ -860,6 +1056,17 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
   }, [id, messages, session?.accessToken]);
 
   useEffect(() => {
+    if (!session?.accessToken) return;
+    const interval = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      void refreshMatches();
+    }, 15000);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [refreshMatches, session?.accessToken]);
+
+  useEffect(() => {
     if (!latestIncomingMessageId) {
       setReplySuggestions([]);
       setSuggestionsTriggerMessageId(null);
@@ -878,10 +1085,15 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     if (!socketRef.current || !match) return;
     try {
       const peer = await ensurePeer(match.otherUserId);
-      const offer = await peer.createOffer();
+      const offer = await peer.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true,
+      });
       await peer.setLocalDescription(offer);
       setCallState("calling");
+      setOutgoingCallPhase("calling");
       setShowCallOverlay(true);
+      setError(null);
       socketRef.current.emit("call_invite", {
         match_id: id,
         offer,
@@ -903,6 +1115,7 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
   const acceptIncomingCall = useCallback(async () => {
     if (!socketRef.current) return;
     pendingIncomingAcceptRef.current = true;
+    setShowCallOverlay(true);
     setError(null);
     try {
       const peer = await ensurePeer(incomingTargetUserId || match?.otherUserId);
@@ -946,6 +1159,31 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
     }
     cleanupCall();
   }, [activeCallId, cleanupCall, incomingCallId]);
+
+  const toggleMicrophone = useCallback(() => {
+    const stream = localStreamRef.current;
+    if (!stream) return;
+    const audioTracks = stream.getAudioTracks();
+    if (!audioTracks.length) return;
+    const nextEnabled = !audioTracks.every((track) => track.enabled);
+    audioTracks.forEach((track) => {
+      track.enabled = nextEnabled;
+    });
+    setIsMicEnabled(nextEnabled);
+  }, []);
+
+  const toggleCamera = useCallback(() => {
+    const stream = localStreamRef.current;
+    if (!stream) return;
+    const videoTracks = stream.getVideoTracks();
+    if (!videoTracks.length) return;
+    const nextEnabled = !videoTracks.every((track) => track.enabled);
+    videoTracks.forEach((track) => {
+      track.enabled = nextEnabled;
+    });
+    setIsCameraEnabled(nextEnabled);
+    setLocalVideoActive(nextEnabled);
+  }, []);
 
   const readMediaMetadata = useCallback(
     async (file: File, type: "IMAGE" | "GIF" | "VIDEO") => {
@@ -1179,6 +1417,40 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
   const noiseBg = {
     backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E")`,
   };
+  const callStatusText =
+    callState === "incoming"
+      ? `Incoming video call from ${match.name}`
+      : callState === "calling"
+      ? outgoingCallPhase === "ringing"
+        ? `${match.name} is ringing...`
+        : outgoingCallPhase === "connecting"
+        ? `Connecting to ${match.name}...`
+        : isOnline
+        ? `Calling ${match.name}...`
+        : `${match.name} is offline. Trying anyway...`
+      : callState === "active" && !remoteVideoActive
+      ? `Connecting video with ${match.name}...`
+      : `Connected with ${match.name}`;
+  const headerSubtitle =
+    callState === "active"
+      ? remoteVideoActive
+        ? "In call"
+        : "Connecting..."
+      : callState === "incoming"
+      ? "Incoming call..."
+      : callState === "calling"
+      ? outgoingCallPhase === "ringing"
+        ? "Ringing..."
+        : outgoingCallPhase === "connecting"
+        ? "Connecting..."
+        : isOnline
+        ? "Calling..."
+        : "User offline"
+      : isOnline
+      ? "Online"
+      : unreadCount > 0
+      ? `${unreadCount} unread`
+      : "Offline";
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#0A0A0A]">
@@ -1188,17 +1460,7 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
         onProfileClick={() => setShowMiniProfile(true)}
         onStartCall={() => void startCall()}
         callActive={callState !== "idle"}
-        subtitle={
-          callState === "active"
-            ? "In call"
-            : callState === "calling"
-            ? "Calling..."
-            : isOnline
-            ? "Online"
-            : unreadCount > 0
-            ? `${unreadCount} unread`
-            : "Offline"
-        }
+        subtitle={headerSubtitle}
       />
       <div
         ref={messagesContainerRef}
@@ -1314,43 +1576,6 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       </div>
 
       <AnimatePresence>
-        {callState === "incoming" && !showCallOverlay && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="fixed right-4 top-4 z-[80] w-[320px] rounded-2xl border border-fuchsia-400/40 bg-zinc-950/95 p-4 shadow-[0_20px_80px_rgba(217,70,239,0.35)] backdrop-blur"
-          >
-            <div className="flex items-start gap-3">
-              <div className="h-11 w-11 overflow-hidden rounded-full border border-zinc-700">
-                <img src={match.avatar} alt={match.name} className="h-full w-full object-cover" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-white">{match.name} is calling you</p>
-                <p className="text-xs text-fuchsia-200/80">Tap open for full screen or reject now</p>
-              </div>
-            </div>
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => setShowCallOverlay(true)}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-fuchsia-600 px-3 py-2 text-sm font-semibold text-white hover:bg-fuchsia-500"
-              >
-                <PhoneCall size={16} />
-                Open
-              </button>
-              <button
-                onClick={rejectIncomingCall}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-crimson px-3 py-2 text-sm font-semibold text-white hover:opacity-90"
-              >
-                <PhoneOff size={16} />
-                Reject
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
         {showMiniProfile && (
           <MiniProfileDrawer
             match={match}
@@ -1369,56 +1594,127 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
       </AnimatePresence>
 
       <AnimatePresence>
+        {callState !== "idle" && !showCallOverlay && (
+          <motion.button
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            onClick={() => setShowCallOverlay(true)}
+            className="fixed right-4 top-20 z-[75] flex items-center gap-2 rounded-full border border-fuchsia-400/40 bg-zinc-950/95 px-4 py-2 text-sm font-semibold text-white shadow-[0_20px_60px_rgba(217,70,239,0.32)] backdrop-blur"
+          >
+            <PhoneCall size={16} />
+            Return to call
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {callState !== "idle" && showCallOverlay && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] bg-black/90 p-4"
+            className="fixed inset-0 z-[80] overflow-hidden bg-black"
           >
-            <div className="mx-auto flex h-full max-w-5xl flex-col gap-4">
-              <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                <p className="text-sm text-white">
-                  {callState === "incoming" ? `Incoming call from ${match.name}` : callState === "calling" ? `Calling ${match.name}...` : `In call with ${match.name}`}
-                </p>
-                <button onClick={endCall} className="rounded-full bg-crimson p-2 text-white">
-                  <PhoneOff size={18} />
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-fuchsia-950/40" />
+            <div className="absolute inset-0">
+              <video ref={remoteVideoRef} autoPlay playsInline className="h-full w-full object-cover" />
+            </div>
+            {!remoteVideoActive && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/40 backdrop-blur-sm">
+                {callState === "calling" && localStreamRef.current ? (
+                  <>
+                    <div className="h-52 w-36 overflow-hidden rounded-3xl border border-white/25 bg-zinc-900/80 shadow-2xl">
+                      <video autoPlay muted playsInline className="h-full w-full object-cover" style={{ transform: "scaleX(-1)" }} ref={(node) => {
+                        if (!node) return;
+                        node.srcObject = localStreamRef.current;
+                        void node.play().catch(() => null);
+                      }} />
+                    </div>
+                    <p className="text-sm text-zinc-100">Waiting for {match.name} to accept...</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="h-28 w-28 overflow-hidden rounded-full border-2 border-white/30 shadow-2xl">
+                      <img src={match.avatar} alt={match.name} className="h-full w-full object-cover" />
+                    </div>
+                    <p className="text-xl font-semibold text-white">{match.name}</p>
+                    <p className="text-sm text-zinc-200">{callStatusText}</p>
+                  </>
+                )}
+              </div>
+            )}
+            <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl flex-col px-4 pb-8 pt-6 sm:px-6">
+              <div className="flex items-start justify-between">
+                <div className="rounded-2xl border border-white/20 bg-black/40 px-4 py-2 backdrop-blur">
+                  <p className="text-base font-semibold text-white">{match.name}</p>
+                  <p className="text-xs text-zinc-200">{callStatusText}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (callState === "incoming") return;
+                    setShowCallOverlay(false);
+                  }}
+                  className="rounded-full border border-white/20 bg-black/40 p-2 text-white backdrop-blur disabled:opacity-40"
+                  disabled={callState === "incoming"}
+                >
+                  <PhoneCall size={18} />
                 </button>
               </div>
-              <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-zinc-900">
-                  <video ref={remoteVideoRef} autoPlay playsInline className="h-full w-full object-cover" />
-                </div>
-                <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-zinc-900">
-                  <video ref={localVideoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
-                </div>
+              <div className="pointer-events-none relative flex-1">
+                {(remoteVideoActive || callState === "active") && (
+                  <div className="pointer-events-auto absolute bottom-4 right-0 h-40 w-28 overflow-hidden rounded-2xl border border-white/20 bg-zinc-900/80 shadow-2xl sm:h-52 sm:w-36">
+                    <video ref={localVideoRef} autoPlay muted playsInline className="h-full w-full object-cover" style={{ transform: "scaleX(-1)" }} />
+                    {!localVideoActive && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-xs font-semibold text-white">
+                        Camera Off
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              {callState === "incoming" && (
-                <div className="flex justify-center gap-4">
-                  <button onClick={() => void acceptIncomingCall()} className="flex items-center gap-2 rounded-full bg-green-600 px-5 py-3 text-sm font-semibold text-white">
-                    <PhoneIncoming size={18} />
-                    Accept
-                  </button>
-                  <button onClick={rejectIncomingCall} className="flex items-center gap-2 rounded-full bg-crimson px-5 py-3 text-sm font-semibold text-white">
-                    <PhoneOff size={18} />
-                    Reject
-                  </button>
-                </div>
-              )}
-              {callState === "calling" && (
-                <div className="flex justify-center">
-                  <button onClick={endCall} className="flex items-center gap-2 rounded-full bg-crimson px-5 py-3 text-sm font-semibold text-white">
-                    <PhoneOff size={18} />
-                    Cancel
-                  </button>
-                </div>
-              )}
-              {callState === "active" && (
-                <div className="flex justify-center">
-                  <button onClick={endCall} className="flex items-center gap-2 rounded-full bg-crimson px-5 py-3 text-sm font-semibold text-white">
-                    <PhoneCall size={18} />
-                    End call
-                  </button>
+              <div className="mx-auto flex w-full max-w-md items-center justify-center gap-4 rounded-3xl border border-white/20 bg-black/45 px-4 py-3 backdrop-blur">
+                {callState === "incoming" ? (
+                  <>
+                    <button
+                      onClick={rejectIncomingCall}
+                      className="flex h-14 w-14 items-center justify-center rounded-full bg-crimson text-white shadow-lg"
+                    >
+                      <PhoneOff size={20} />
+                    </button>
+                    <button
+                      onClick={() => void acceptIncomingCall()}
+                      className="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white shadow-lg"
+                    >
+                      <PhoneIncoming size={24} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={toggleMicrophone}
+                      className={`flex h-12 w-12 items-center justify-center rounded-full text-white ${isMicEnabled ? "bg-white/20" : "bg-zinc-700"}`}
+                    >
+                      {isMicEnabled ? <Mic size={18} /> : <MicOff size={18} />}
+                    </button>
+                    <button
+                      onClick={toggleCamera}
+                      className={`flex h-12 w-12 items-center justify-center rounded-full text-white ${isCameraEnabled ? "bg-white/20" : "bg-zinc-700"}`}
+                    >
+                      {isCameraEnabled ? <Video size={18} /> : <VideoOff size={18} />}
+                    </button>
+                    <button
+                      onClick={endCall}
+                      className="flex h-14 w-14 items-center justify-center rounded-full bg-crimson text-white"
+                    >
+                      <PhoneOff size={20} />
+                    </button>
+                  </>
+                )}
+              </div>
+              {error && (
+                <div className="mx-auto mt-3 rounded-xl border border-crimson/50 bg-crimson/20 px-3 py-2 text-center text-xs text-white">
+                  {error}
                 </div>
               )}
             </div>
