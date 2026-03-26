@@ -1219,11 +1219,12 @@ export const api = {
   matchReplySuggestions: async (
     token: string,
     matchId: string,
-    options?: { force?: boolean; triggerMessageId?: string }
+    options?: { force?: boolean; triggerMessageId?: string; prompt?: string }
   ) => {
     const params = new URLSearchParams();
     if (options?.force) params.set('force', 'true');
     if (options?.triggerMessageId) params.set('trigger_message_id', options.triggerMessageId);
+    if (options?.prompt?.trim()) params.set('prompt', options.prompt.trim());
     const query = params.toString();
     return apiCall<ReplySuggestionsResponse>({
       path: `/api/matches/${matchId}/reply-suggestions${query ? `?${query}` : ''}`,

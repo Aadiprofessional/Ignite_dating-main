@@ -68,6 +68,8 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
   const [suggestionsTriggerMessageId, setSuggestionsTriggerMessageId] = useState<string | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
+  const [askAiBoxOpen, setAskAiBoxOpen] = useState(false);
+  const [askAiQuestion, setAskAiQuestion] = useState("");
   const ringtoneContextRef = useRef<AudioContext | null>(null);
   const ringtoneIntervalRef = useRef<number | null>(null);
   const suggestionsFetchRef = useRef<string | null>(null);
@@ -83,7 +85,7 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
   }, [callState]);
 
   const fetchReplySuggestions = useCallback(
-    async (triggerMessageId: string, force = false) => {
+    async (triggerMessageId: string, force = false, prompt?: string) => {
       const token = session?.accessToken;
       if (!token) return;
       if (!force && suggestionsFetchRef.current === triggerMessageId) return;
@@ -94,6 +96,7 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
         const response = await api.matchReplySuggestions(token, id, {
           triggerMessageId,
           force,
+          prompt,
         });
         const suggestionList = (response.data?.suggestions || [])
           .filter((item) => Boolean(item?.reply?.trim()))
@@ -1573,16 +1576,65 @@ export function ChatPageClient({ id, layout = "standalone" }: ChatPageClientProp
           <p className="text-[11px] font-mono uppercase tracking-wide text-zinc-500">Quick replies</p>
           {suggestionsLoading && <span className="text-[11px] text-zinc-500">Generating...</span>}
         </div>
-        <button
-          disabled={!latestIncomingMessageId || suggestionsLoading || !session?.accessToken}
-          onClick={() => {
-            if (!latestIncomingMessageId) return;
-            void fetchReplySuggestions(latestIncomingMessageId, true);
-          }}
-          className="mb-2 w-full rounded-xl border border-fuchsia-500/40 bg-fuchsia-500/10 px-3 py-2 text-left text-sm font-semibold text-fuchsia-100 transition-colors hover:bg-fuchsia-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Generate quick reply -1 coins
-        </button>
+        <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <button
+            disabled={!latestIncomingMessageId || suggestionsLoading || !session?.accessToken}
+            onClick={() => {
+              if (!latestIncomingMessageId) return;
+              void fetchReplySuggestions(latestIncomingMessageId, true);
+            }}
+            className="rounded-xl border border-fuchsia-500/40 bg-fuchsia-500/10 px-3 py-2 text-left text-sm font-semibold text-fuchsia-100 transition-colors hover:bg-fuchsia-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Generate quick reply -1 coins
+          </button>
+          <button
+            disabled={!latestIncomingMessageId || suggestionsLoading || !session?.accessToken}
+            onClick={() => setAskAiBoxOpen((prev) => !prev)}
+            className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-left text-sm font-semibold text-zinc-100 transition-colors hover:border-fuchsia-500/40 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Ask AI what to write
+          </button>
+        </div>
+        {askAiBoxOpen && (
+          <div className="mb-2 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3">
+            <textarea
+              value={askAiQuestion}
+              onChange={(event) => setAskAiQuestion(event.target.value)}
+              placeholder="Ask AI: what should I reply if I want to sound playful?"
+              rows={3}
+              className="w-full resize-none rounded-lg border border-zinc-700 bg-black/30 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-fuchsia-500/50 focus:outline-none"
+            />
+            <div className="mt-2 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAskAiBoxOpen(false);
+                  setAskAiQuestion("");
+                  setSuggestionsError(null);
+                }}
+                className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!latestIncomingMessageId || suggestionsLoading || !session?.accessToken}
+                onClick={() => {
+                  if (!latestIncomingMessageId) return;
+                  const trimmedQuestion = askAiQuestion.trim();
+                  if (!trimmedQuestion) {
+                    setSuggestionsError("Please enter a question for AI.");
+                    return;
+                  }
+                  void fetchReplySuggestions(latestIncomingMessageId, true, trimmedQuestion);
+                }}
+                className="rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/15 px-3 py-1.5 text-xs font-semibold text-fuchsia-100 transition-colors hover:bg-fuchsia-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Ask AI -1 coins
+              </button>
+            </div>
+          </div>
+        )}
         {suggestionsError && <p className="mb-2 text-[11px] text-crimson">{suggestionsError}</p>}
         {replySuggestions.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:overflow-visible md:pb-0">
