@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dispatch, SetStateAction } from "react";
 import type { UniversityOption } from "@/lib/api";
+import type { CityOptionGroup } from "@/lib/constants/chinaCities";
 
 export interface DiscoverSearchFilters {
   universityIds: string[];
@@ -19,6 +20,7 @@ interface FilterDrawerProps {
   filters: DiscoverSearchFilters;
   setFilters: Dispatch<SetStateAction<DiscoverSearchFilters>>;
   universityOptions: UniversityOption[];
+  cityOptionGroups: CityOptionGroup[];
   onApply: () => void;
   onReset: () => void;
 }
@@ -29,6 +31,7 @@ export function FilterDrawer({
   filters,
   setFilters,
   universityOptions,
+  cityOptionGroups,
   onApply,
   onReset,
 }: FilterDrawerProps) {
@@ -134,14 +137,25 @@ export function FilterDrawer({
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-mono text-zinc-400">Cities (comma-separated)</label>
-                <input
-                  type="text"
+                <label className="block text-sm font-mono text-zinc-400">City</label>
+                <select
                   value={filters.cities}
                   onChange={(e) => setFilters((current) => ({ ...current, cities: e.target.value }))}
-                  placeholder="Mumbai,Delhi"
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-crimson/50"
-                />
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:border-crimson/50"
+                >
+                  <option value="" className="bg-zinc-900">
+                    All cities
+                  </option>
+                  {cityOptionGroups.map((group) => (
+                    <optgroup key={group.label} label={group.label} className="bg-zinc-900 text-zinc-300">
+                      {group.options.map((city) => (
+                        <option key={city} value={city} className="bg-zinc-900">
+                          {city}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
               </div>
 
               <div className="pt-4 flex gap-4">

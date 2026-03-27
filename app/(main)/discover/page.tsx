@@ -3,6 +3,7 @@
 import { FilterDrawer } from "@/components/discover/FilterDrawer";
 import type { DiscoverSearchFilters } from "@/components/discover/FilterDrawer";
 import { ProfileGrid } from "@/components/discover/ProfileGrid";
+import { CHINA_CITY_OPTION_GROUPS_EN } from "@/lib/constants/chinaCities";
 import { useStore } from "@/lib/store";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -166,16 +167,27 @@ export default function DiscoverPage() {
             }}
             className="h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-crimson/50"
           />
-          <input
-            type="text"
-            placeholder="City (Mumbai)"
+          <select
             value={filters.cities}
             onChange={(e) => {
               const next = { ...filters, cities: e.target.value };
               applyFilters(next);
             }}
-            className="h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-crimson/50"
-          />
+            className="h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white focus:outline-none focus:border-crimson/50"
+          >
+            <option value="" className="bg-zinc-900">
+              All cities
+            </option>
+            {CHINA_CITY_OPTION_GROUPS_EN.map((group) => (
+              <optgroup key={group.label} label={group.label} className="bg-zinc-900 text-zinc-300">
+                {group.options.map((city) => (
+                  <option key={city} value={city} className="bg-zinc-900">
+                    {city}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
           <button
             onClick={() => applyFilters(defaultFilters)}
             className="h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10"
@@ -194,6 +206,7 @@ export default function DiscoverPage() {
         filters={filters}
         setFilters={setFilters}
         universityOptions={universities}
+        cityOptionGroups={CHINA_CITY_OPTION_GROUPS_EN}
         onApply={() => setAppliedFilters(filters)}
         onReset={() => {
           applyFilters(defaultFilters);
