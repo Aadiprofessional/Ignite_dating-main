@@ -561,9 +561,7 @@ export const useStore = create<AppState>()(
           await api.updateMe(token, payload);
           if (updates.photos) {
             const urls = updates.photos.filter((photo) => /^https?:\/\//.test(photo));
-            if (urls.length) {
-              await api.replaceImages(token, urls);
-            }
+            await api.replaceImages(token, urls);
           }
           await api.updatePreferences(token, {
             min_age: nextPreferences.minAge,

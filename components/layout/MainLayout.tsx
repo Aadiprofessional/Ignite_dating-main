@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, MessageCircle, Search, User, Users, Sparkles, Compass, ShieldCheck, CalendarRange, LogOut, Coins, Crown, Bell } from "lucide-react";
+import { Flame, MessageCircle, Search, User, Users, Sparkles, Compass, ShieldCheck, CalendarRange, LogOut, Coins, Crown, Bell, MapPin, ArrowUpRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -230,73 +230,85 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="mt-auto space-y-3">
-          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="text-xs font-mono uppercase tracking-[0.16em] text-zinc-500">Active Account</div>
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-lg font-semibold text-white">{currentUser?.name ?? "Hkmeetup User"}</div>
-              {hasActiveSubscription ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-300">
-                  <Crown className="h-3 w-3" />
-                  Pro
-                </span>
-              ) : null}
+        <div className="mt-auto space-y-2.5 rounded-2xl border border-white/10 bg-gradient-to-b from-white/10 to-white/[0.03] p-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1">
+              <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">Active Account</div>
+              <div className="text-sm font-semibold leading-none text-white">{currentUser?.name ?? "Hkmeetup User"}</div>
+              <div className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
+                <MapPin className="h-3 w-3" />
+                {typeof currentUser?.location === "string"
+                  ? currentUser.location
+                  : currentUser?.location?.city ?? "Loves meaningful connections"}
+              </div>
             </div>
-            <div className="text-sm text-zinc-400">
-              {typeof currentUser?.location === "string"
-                ? currentUser.location
-                : currentUser?.location?.city ?? "Loves meaningful connections"}
-            </div>
-            {!hasActiveSubscription ? (
-              <Link
-                href="/wallet/buy"
-                className="flex w-full items-center justify-center rounded-xl bg-crimson px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-600"
-              >
-                Buy Subscription
-              </Link>
-            ) : null}
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em]",
+                hasActiveSubscription ? "bg-amber-500/20 text-amber-300" : "bg-zinc-800 text-zinc-300"
+              )}
+            >
+              <Crown className="h-3 w-3" />
+              {hasActiveSubscription ? "Pro" : "Basic"}
+            </span>
           </div>
-          {hasActiveSubscription ? (
-            <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="flex items-center gap-2 text-zinc-200">
-                <Coins className="h-4 w-4 text-amber-400" />
-                <span className="text-xs font-mono uppercase tracking-[0.14em] text-zinc-400">Coins</span>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-white/10 bg-black/20 p-2">
+              <div className="mb-1 flex items-center gap-1 text-[9px] uppercase tracking-[0.12em] text-zinc-500">
+                <Coins className="h-3 w-3 text-amber-400" />
+                Coins
               </div>
-              <div className="text-2xl font-bold text-white">{wallet?.coins ?? 0}</div>
-              <div className="flex gap-2">
-                <Link
-                  href="/wallet/transactions"
-                  className="flex-1 rounded-xl border border-white/10 px-3 py-2 text-center text-xs font-medium text-zinc-200 transition-colors hover:bg-white/10"
-                >
-                  Transactions
-                </Link>
-                <Link
-                  href="/wallet/buy"
-                  className="flex-1 rounded-xl border border-crimson/30 px-3 py-2 text-center text-xs font-medium text-crimson transition-colors hover:bg-crimson/10"
-                >
-                  Buy
-                </Link>
-              </div>
-              {(wallet?.coins ?? 0) < 30 ? (
-                <Link
-                  href="/wallet/buy?type=addon"
-                  className="flex w-full items-center justify-center rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-black transition-colors hover:bg-amber-400"
-                >
-                  Buy Addon
-                </Link>
-              ) : null}
+              <div className="text-base font-bold leading-none text-white">{wallet?.coins ?? 0}</div>
             </div>
+            <Link
+              href="/wallet/transactions"
+              className="group rounded-xl border border-white/10 bg-black/20 p-2 transition-colors hover:border-crimson/30 hover:bg-crimson/10"
+            >
+              <div className="mb-1 text-[9px] uppercase tracking-[0.12em] text-zinc-500">Transactions</div>
+              <div className="flex items-center justify-between text-[11px] font-medium text-zinc-200">
+                Open
+                <ArrowUpRight className="h-3 w-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </div>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Link
+              href="/wallet/buy"
+              className="flex items-center justify-center rounded-xl bg-crimson px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-red-600"
+            >
+              Buy
+            </Link>
+            <button
+              onClick={() => {
+                logout();
+                router.push("/login");
+              }}
+              className="flex items-center justify-center gap-1 rounded-xl border border-white/15 bg-white/[0.03] px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-200 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <LogOut className="h-3 w-3" />
+              Logout
+            </button>
+          </div>
+
+          {!hasActiveSubscription ? (
+            <Link
+              href="/wallet/buy"
+              className="flex w-full items-center justify-center rounded-xl border border-crimson/35 bg-crimson/10 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-crimson transition-colors hover:bg-crimson/20"
+            >
+              Upgrade to Pro
+            </Link>
           ) : null}
-          <button
-            onClick={() => {
-              logout();
-              router.push("/login");
-            }}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-200 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </button>
+
+          {hasActiveSubscription && (wallet?.coins ?? 0) < 30 ? (
+            <Link
+              href="/wallet/buy?type=addon"
+              className="flex w-full items-center justify-center rounded-xl border border-amber-400/30 bg-amber-500/15 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-200 transition-colors hover:bg-amber-500/25"
+            >
+              Buy Addon
+            </Link>
+          ) : null}
         </div>
       </aside>
 

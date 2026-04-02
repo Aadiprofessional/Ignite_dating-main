@@ -1,9 +1,9 @@
 "use client";
 
 import { useStore } from "@/lib/store";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, X } from "lucide-react";
 import Image from "next/image";
 import {
   DndContext, 
@@ -72,23 +72,25 @@ function SortablePhoto({ id, url, onRemove }: { id: string, url: string, onRemov
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { currentUser, updateProfile } = useStore();
+  const { currentUser, updateProfile, uploadProfilePhoto } = useStore();
   
   const [photos, setPhotos] = useState<string[]>([]);
   const [bio, setBio] = useState("");
   const [job, setJob] = useState("");
-  const [company, setCompany] = useState("");
   const [education, setEducation] = useState("");
   const [interests, setInterests] = useState<string[]>([]);
   const [newInterest, setNewInterest] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (currentUser) {
       setPhotos(currentUser.photos);
       setBio(currentUser.bio);
       setJob(currentUser.job);
-      setCompany(currentUser.company || "");
       setEducation(currentUser.education || "");
       setInterests(currentUser.interests);
     }
@@ -114,14 +116,20 @@ export default function EditProfilePage() {
   };
 
   const handleRemovePhoto = (urlToRemove: string) => {
+    if (photos.length <= 1) {
+      return;
+    }
     setPhotos(photos.filter(url => url !== urlToRemove));
   };
 
   const handleAddInterest = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && newInterest.trim()) {
       e.preventDefault();
+      if (interests.length >= 10) {
+        return;
+      }
       if (!interests.includes(newInterest.trim())) {
-        setInterests([...interests, newInterest.trim()]);
+        setInterests([...interests, newInterest.trim()].slice(0, 10));
       }
       setNewInterest("");
     }
@@ -131,18 +139,54 @@ export default function EditProfilePage() {
     setInterests(interests.filter(i => i !== interestToRemove));
   };
 
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !currentUser) return;
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please choose an image file.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("Image is too large. Maximum size is 10MB.");
+      return;
+    }
+    if (photos.length >= 9) {
+      setUploadError("You can upload up to 9 photos.");
+      return;
+    }
+
+    setUploadError(null);
+    setIsUploadingPhoto(true);
+    try {
+      const uploadedUrl = await uploadProfilePhoto(file);
+      setPhotos((prev) => [...prev, uploadedUrl].slice(0, 9));
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Failed to upload photo.");
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
   const handleSave = async () => {
+    if (isUploadingPhoto) return;
+    if (!photos.length) {
+      setSaveError("At least one profile photo is required.");
+      return;
+    }
     setIsSaving(true);
+    setSaveError(null);
     try {
       await updateProfile({
         photos,
         bio,
         job,
-        company,
         education,
-        interests
+        interests: interests.slice(0, 10)
       });
       router.back();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Failed to save profile.");
     } finally {
       setIsSaving(false);
     }
@@ -161,10 +205,10 @@ export default function EditProfilePage() {
         <h1 className="font-serif text-xl font-bold">Edit Profile</h1>
         <button 
           onClick={() => void handleSave()}
-          disabled={isSaving}
+          disabled={isSaving || isUploadingPhoto}
           className="text-crimson font-bold text-sm hover:text-crimson-dark transition-colors"
         >
-          {isSaving ? "Saving..." : "Done"}
+          {isSaving ? "Saving..." : isUploadingPhoto ? "Uploading..." : "Done"}
         </button>
         </div>
       </div>
@@ -197,18 +241,28 @@ export default function EditProfilePage() {
                 ))}
                 
                 {photos.length < 9 && (
-                  <button className="aspect-[3/4] rounded-xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
+                  <button
+                    type="button"
+                    disabled={isUploadingPhoto}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="aspect-[3/4] rounded-xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-colors group disabled:cursor-not-allowed disabled:opacity-70"
+                  >
                     <div className="w-10 h-10 rounded-full bg-crimson flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Plus className="w-6 h-6 text-white" />
+                      {isUploadingPhoto ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Plus className="w-6 h-6 text-white" />}
                     </div>
-                    <span className="text-xs font-bold text-white/60">Add Photo</span>
+                    <span className="text-xs font-bold text-white/60">{isUploadingPhoto ? "Uploading..." : "Add Photo"}</span>
                   </button>
                 )}
               </div>
             </SortableContext>
           </DndContext>
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => void handleFileSelect(event)} />
+          {uploadError ? <p className="text-xs text-crimson mt-2 text-center">{uploadError}</p> : null}
           <p className="text-xs text-white/40 mt-3 text-center">
             Drag and drop to reorder. First photo is your main profile picture.
+          </p>
+          <p className="text-xs text-white/30 mt-1 text-center">
+            At least 1 photo is required.
           </p>
         </div>
 
@@ -236,17 +290,6 @@ export default function EditProfilePage() {
               value={job}
               onChange={(e) => setJob(e.target.value)}
               placeholder="Add job title"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-crimson"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-white/50 ml-1">Company</label>
-            <input
-              type="text"
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder="Add company"
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-crimson"
             />
           </div>
@@ -292,6 +335,7 @@ export default function EditProfilePage() {
           />
           <p className="text-xs text-white/30 ml-1">Maximum 10 interests</p>
         </div>
+        {saveError ? <p className="text-sm text-crimson">{saveError}</p> : null}
       </div>
     </div>
   );

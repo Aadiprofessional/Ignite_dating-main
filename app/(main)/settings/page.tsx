@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronRight, Bell, Lock, Globe, Smartphone, LogOut, Trash2, Moon, Volume2, Shield } from "lucide-react";
+import { ArrowLeft, ChevronRight, LogOut, Save, Shield, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { useStore } from "@/lib/store";
 import { BrandLogo } from "@/components/ui/flame-logo";
@@ -70,12 +70,63 @@ function SettingItem({
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { logout } = useStore();
+  const { logout, currentUser, updateProfile } = useStore();
   const [distance, setDistance] = useState(50);
-  const [ageRange, setAgeRange] = useState([18, 35]);
+  const [minAge, setMinAge] = useState(18);
+  const [maxAge, setMaxAge] = useState(35);
   const [showMe, setShowMe] = useState(true);
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    setDistance(currentUser.preferences.maxDistanceKm || 50);
+    setMinAge(currentUser.preferences.minAge || 18);
+    setMaxAge(currentUser.preferences.maxAge || 35);
+    setShowMe(currentUser.preferences.showMe);
+  }, [currentUser]);
+
+  const hasUnsavedChanges = useMemo(() => {
+    if (!currentUser) return false;
+    return (
+      distance !== currentUser.preferences.maxDistanceKm ||
+      minAge !== currentUser.preferences.minAge ||
+      maxAge !== currentUser.preferences.maxAge ||
+      showMe !== currentUser.preferences.showMe
+    );
+  }, [currentUser, distance, maxAge, minAge, showMe]);
+
+  const handleSave = async () => {
+    if (!currentUser) return;
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+    try {
+      await updateProfile({
+        preferences: {
+          minAge,
+          maxAge,
+          maxDistanceKm: distance,
+          interestedIn: currentUser.preferences.interestedIn,
+          showMe,
+        },
+      });
+      setSaveSuccess("Preferences updated.");
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Failed to update settings.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-[#080808] flex items-center justify-center text-white/60">
+        Loading settings...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#080808] pb-24 text-white lg:pb-8">
@@ -89,14 +140,11 @@ export default function SettingsPage() {
 
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:px-8">
         <div>
-        {/* Account Settings */}
-        <SettingSection title="Account Settings">
-          <SettingItem icon={Smartphone} label="Phone Number" value="+1 (555) 000-0000" />
-          <SettingItem icon={Globe} label="Email" value="alex@example.com" />
-          <SettingItem icon={Lock} label="Connected Accounts" />
+        <SettingSection title="Profile">
+          <SettingItem icon={User} label="Edit Profile" onClick={() => router.push('/profile/edit')} />
+          <SettingItem icon={Shield} label="Safety Center" onClick={() => router.push('/safety')} />
         </SettingSection>
 
-        {/* Discovery */}
         <SettingSection title="Discovery">
           <div className="p-4 border-b border-white/5">
             <div className="flex justify-between items-center mb-2">
@@ -115,17 +163,38 @@ export default function SettingsPage() {
           <div className="p-4 border-b border-white/5">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium">Age Range</span>
-              <span className="text-sm text-white/50">{ageRange[0]} - {ageRange[1]}</span>
+              <span className="text-sm text-white/50">{minAge} - {maxAge}</span>
             </div>
-            {/* Simple dual slider simulation */}
-            <input 
-              type="range" 
-              min="18" 
-              max="60" 
-              value={ageRange[1]} 
-              onChange={(e) => setAgeRange([ageRange[0], parseInt(e.target.value)])}
-              className="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-crimson"
-            />
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs text-white/40 mb-1">Min age</div>
+                <input
+                  type="range"
+                  min="18"
+                  max="60"
+                  value={minAge}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setMinAge(Math.min(next, maxAge - 1));
+                  }}
+                  className="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-crimson"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-white/40 mb-1">Max age</div>
+                <input
+                  type="range"
+                  min="19"
+                  max="70"
+                  value={maxAge}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setMaxAge(Math.max(next, minAge + 1));
+                  }}
+                  className="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-crimson"
+                />
+              </div>
+            </div>
           </div>
           <SettingItem 
             label="Show me on Hkmeetup" 
@@ -134,38 +203,20 @@ export default function SettingsPage() {
             onClick={() => setShowMe(!showMe)} 
           />
         </SettingSection>
+        {saveError ? <p className="text-sm text-crimson mt-3">{saveError}</p> : null}
+        {saveSuccess ? <p className="text-sm text-emerald-400 mt-3">{saveSuccess}</p> : null}
         </div>
 
         <div>
-        {/* App Settings */}
-        <SettingSection title="App Settings">
-          <SettingItem 
-            icon={Bell} 
-            label="Push Notifications" 
-            type="toggle" 
-            checked={notifications} 
-            onClick={() => setNotifications(!notifications)} 
-          />
-          <SettingItem 
-            icon={Moon} 
-            label="Dark Mode" 
-            type="toggle" 
-            checked={darkMode} 
-            onClick={() => setDarkMode(!darkMode)} 
-          />
-          <SettingItem icon={Volume2} label="Sound Effects" type="toggle" checked={true} />
-        </SettingSection>
-
-        {/* Legal & Support */}
-        <SettingSection title="Legal & Support">
-          <SettingItem icon={Shield} label="Safety Center" onClick={() => router.push('/safety')} />
-          <SettingItem label="Privacy Policy" />
-          <SettingItem label="Terms of Service" />
-          <SettingItem label="Licenses" />
-        </SettingSection>
-
-        {/* Danger Zone */}
         <div className="space-y-4 mt-8 mb-12">
+          <button
+            onClick={() => void handleSave()}
+            disabled={!hasUnsavedChanges || isSaving}
+            className="w-full py-3 rounded-xl bg-crimson text-white font-medium disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          >
+            <Save className="w-4 h-4" />
+            {isSaving ? "Saving..." : "Save Preferences"}
+          </button>
           <button
             onClick={() => {
               logout();
@@ -175,11 +226,6 @@ export default function SettingsPage() {
           >
             <LogOut className="w-4 h-4" />
             Log Out
-          </button>
-          
-          <button className="w-full py-3 rounded-xl border border-white/5 text-white/40 font-medium hover:text-crimson hover:bg-crimson/5 transition-colors flex items-center justify-center gap-2">
-            <Trash2 className="w-4 h-4" />
-            Delete Account
           </button>
         </div>
 
