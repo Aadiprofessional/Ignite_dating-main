@@ -37,7 +37,7 @@ export type OnboardingData = {
   ageRange: [number, number];
   distance: number;
   distanceUnit: 'km' | 'mi';
-  showOnIgnite: boolean;
+  showOnHkmeetup: boolean;
 };
 
 interface OnboardingContextType {
@@ -79,7 +79,7 @@ const defaultData: OnboardingData = {
   ageRange: [18, 35],
   distance: 50,
   distanceUnit: 'km',
-  showOnIgnite: true,
+  showOnHkmeetup: true,
 };
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);

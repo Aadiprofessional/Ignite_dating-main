@@ -49,7 +49,7 @@ export default function Footer() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xl text-crimson">🔥</span>
-              <span className="font-display text-3xl tracking-[0.14em] text-offwhite">IGNITE</span>
+              <span className="font-display text-3xl tracking-[0.14em] text-offwhite">HKMEETUP</span>
             </div>
             <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-offwhite/45">
               find your spark
@@ -65,7 +65,7 @@ export default function Footer() {
                     key={item.label}
                     href={item.href}
                     aria-label={item.label}
-                    className="ignite-btn inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 text-offwhite/70 transition hover:border-crimson/70 hover:bg-crimson hover:text-offwhite"
+                    className="hkmeetup-btn inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 text-offwhite/70 transition hover:border-crimson/70 hover:bg-crimson hover:text-offwhite"
                   >
                     <Icon className="h-4 w-4" />
                   </Link>
@@ -127,7 +127,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-16 flex flex-col justify-between gap-3 border-t border-white/6 pt-8 sm:flex-row">
-          <p className="font-mono text-xs text-offwhite/25">© 2025 IGNITE. Made with 🔥</p>
+          <p className="font-mono text-xs text-offwhite/25">© 2025 HKMEETUP. Made with 🔥</p>
           <p className="font-mono text-xs text-offwhite/25">All rights reserved.</p>
         </div>
       </div>

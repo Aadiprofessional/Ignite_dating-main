@@ -10,6 +10,7 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { connectChatSocket, disconnectChatSocket } from "@/lib/chatSocket";
 import { BottomNav } from "./BottomNav";
+import { BrandLogo } from "@/components/ui/flame-logo";
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -198,8 +199,8 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     >
       <aside className="hidden lg:flex lg:h-full lg:flex-col lg:rounded-3xl lg:border lg:border-white/10 lg:bg-[#0E0E0E] lg:p-5 lg:shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
         <Link href="/home" className="mb-8 flex items-center gap-2 text-crimson">
-          <Flame className="h-7 w-7 fill-crimson" />
-          <span className="font-serif text-2xl font-bold tracking-wide text-white">IGNITE</span>
+          <BrandLogo className="h-8 w-8" />
+          <span className="font-serif text-2xl font-bold tracking-wide text-white">HKMEETUP</span>
         </Link>
 
         <nav className="space-y-2">
@@ -233,7 +234,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="text-xs font-mono uppercase tracking-[0.16em] text-zinc-500">Active Account</div>
             <div className="flex items-center justify-between gap-2">
-              <div className="text-lg font-semibold text-white">{currentUser?.name ?? "Ignite User"}</div>
+              <div className="text-lg font-semibold text-white">{currentUser?.name ?? "Hkmeetup User"}</div>
               {hasActiveSubscription ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-300">
                   <Crown className="h-3 w-3" />

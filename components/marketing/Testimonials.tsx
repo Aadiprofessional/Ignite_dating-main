@@ -37,7 +37,7 @@ const stories: Story[] = [
   },
   {
     names: "Layla & Ethan",
-    quote: "It felt effortless from day one. IGNITE helped us skip the awkward part.",
+    quote: "It felt effortless from day one. HKMEETUP helped us skip the awkward part.",
     avatars: [
       "https://randomuser.me/api/portraits/women/39.jpg",
       "https://randomuser.me/api/portraits/men/43.jpg",
@@ -104,7 +104,7 @@ function StoryCard({ story }: { story: Story }) {
           <div>
             <p className="font-body text-sm text-offwhite">{story.names}</p>
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-offwhite/60">
-              Matched on IGNITE 🔥
+              Matched on HKMEETUP 🔥
             </p>
           </div>
         </div>

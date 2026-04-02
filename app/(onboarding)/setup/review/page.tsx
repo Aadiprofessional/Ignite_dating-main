@@ -58,7 +58,7 @@ export default function ReviewPendingPage() {
   React.useEffect(() => {
     if (!session?.accessToken) return;
     const originalState = window.history.state;
-    window.history.pushState({ ...originalState, __igniteReviewGate: true }, '', window.location.href);
+    window.history.pushState({ ...originalState, __hkmeetupReviewGate: true }, '', window.location.href);
     const onPopState = () => {
       logout();
       router.replace('/login');

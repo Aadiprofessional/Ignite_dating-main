@@ -180,15 +180,15 @@ body {
   border-color: var(--crimson);
 }
 
-.ignite-btn {
+.hkmeetup-btn {
   transition: transform 300ms ease, box-shadow 300ms ease, background-color 300ms ease, border-color 300ms ease;
 }
 
-.ignite-btn:hover {
+.hkmeetup-btn:hover {
   transform: scale(1.03);
 }
 
-.ignite-btn:active {
+.hkmeetup-btn:active {
   transform: scale(0.97);
 }
 

@@ -4,8 +4,8 @@ export const dynamic = 'force-static';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'IGNITE - Find Your Spark',
-    short_name: 'IGNITE',
+    name: 'HKMEETUP - Find Your Spark',
+    short_name: 'HKMEETUP',
     description: 'A dating website for finding your perfect match.',
     start_url: '/',
     display: 'standalone',
@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#E8192C',
     icons: [
       {
-        src: '/next.svg',
+        src: '/hkmeetup-logo.svg',
         sizes: 'any',
         type: 'image/svg+xml',
       },

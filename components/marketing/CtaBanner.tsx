@@ -63,13 +63,13 @@ export default function CtaBanner() {
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/signup"
-            className="ignite-btn rounded-full bg-white px-8 py-3 font-body text-sm font-semibold text-[#0D0D0D]"
+            className="hkmeetup-btn rounded-full bg-white px-8 py-3 font-body text-sm font-semibold text-[#0D0D0D]"
           >
             Create Free Account
           </Link>
           <Link
             href="/login"
-            className="ignite-btn rounded-full border border-white/70 px-8 py-3 font-body text-sm font-semibold text-white"
+            className="hkmeetup-btn rounded-full border border-white/70 px-8 py-3 font-body text-sm font-semibold text-white"
           >
             Sign In
           </Link>

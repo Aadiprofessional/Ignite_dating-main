@@ -16,7 +16,7 @@ curl -s -X POST "$BASE_URL/api/events" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "title":"Ignite Networking Night",
+    "title":"Hkmeetup Networking Night",
     "description":"Meet and connect",
     "image_url":"https://cdn.example.com/events/e1.jpg",
     "location_name":"Blue Hall",
@@ -36,7 +36,7 @@ curl -s -X POST "$BASE_URL/api/events" \
   "event": {
     "id":"uuid",
     "creator_id":"uuid",
-    "title":"Ignite Networking Night",
+    "title":"Hkmeetup Networking Night",
     "status":"pending_approval",
     "capacity":80
   },
@@ -47,7 +47,7 @@ curl -s -X POST "$BASE_URL/api/events" \
 ## List Events (search + filters)
 
 ```bash
-curl -s "$BASE_URL/api/events?search=ignite&city=Mumbai&from_date=2026-04-01T00:00:00.000Z&limit=20&offset=0" \
+curl -s "$BASE_URL/api/events?search=hkmeetup&city=Mumbai&from_date=2026-04-01T00:00:00.000Z&limit=20&offset=0" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -56,7 +56,7 @@ curl -s "$BASE_URL/api/events?search=ignite&city=Mumbai&from_date=2026-04-01T00:
   "events":[
     {
       "id":"uuid",
-      "title":"Ignite Networking Night",
+      "title":"Hkmeetup Networking Night",
       "status":"approved",
       "approved_participants":12,
       "available_slots":68
@@ -124,7 +124,7 @@ curl -s "$BASE_URL/api/events/my/join-requests" \
     {
       "id":"uuid",
       "status":"pending",
-      "events":{"id":"uuid","title":"Ignite Networking Night","starts_at":"2026-04-10T18:00:00.000Z"}
+      "events":{"id":"uuid","title":"Hkmeetup Networking Night","starts_at":"2026-04-10T18:00:00.000Z"}
     }
   ]
 }

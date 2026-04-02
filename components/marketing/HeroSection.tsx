@@ -91,7 +91,7 @@ export default function HeroSection() {
                 transition={{ delay: 0.46, duration: 0.6 }}
                 className="mx-auto max-w-[600px] font-body text-base leading-relaxed text-offwhite/75 sm:text-lg lg:mx-0 lg:text-[19px]"
               >
-                Ignite helps you move from endless scrolling to intentional
+                Hkmeetup helps you move from endless scrolling to intentional
                 dating with profile quality checks, smarter compatibility, and
                 safer first conversations.
               </motion.p>
@@ -104,14 +104,14 @@ export default function HeroSection() {
             >
               <Link
                 href="/signup"
-                className="ignite-btn group inline-flex items-center justify-center rounded-full bg-crimson px-7 py-3.5 font-body text-sm font-semibold text-offwhite shadow-[0_0_32px_rgba(232,25,44,0.28)] transition hover:bg-crimson-dark hover:shadow-[0_0_42px_rgba(232,25,44,0.5)] sm:px-10 sm:py-4"
+                className="hkmeetup-btn group inline-flex items-center justify-center rounded-full bg-crimson px-7 py-3.5 font-body text-sm font-semibold text-offwhite shadow-[0_0_32px_rgba(232,25,44,0.28)] transition hover:bg-crimson-dark hover:shadow-[0_0_42px_rgba(232,25,44,0.5)] sm:px-10 sm:py-4"
               >
                 Start Free
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
               <a
                 href="#how-it-works"
-                className="ignite-btn inline-flex items-center justify-center rounded-full border border-white/20 px-7 py-3.5 font-body text-sm font-medium text-offwhite/90 transition hover:border-white/35 hover:bg-white/5 sm:px-10 sm:py-4"
+                className="hkmeetup-btn inline-flex items-center justify-center rounded-full border border-white/20 px-7 py-3.5 font-body text-sm font-medium text-offwhite/90 transition hover:border-white/35 hover:bg-white/5 sm:px-10 sm:py-4"
               >
                 Explore How It Works
               </a>
@@ -128,7 +128,7 @@ export default function HeroSection() {
                     key={avatar}
                     className={`relative inline-flex h-10 w-10 overflow-hidden rounded-full border border-white/25 sm:h-11 sm:w-11 ${index === 0 ? "" : "-ml-3"}`}
                   >
-                    <Image src={avatar} alt="IGNITE member" fill sizes="44px" />
+                    <Image src={avatar} alt="HKMEETUP member" fill sizes="44px" />
                   </span>
                 ))}
                 <span className="ml-3 rounded-full border border-white/15 bg-white/5 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-offwhite/80">

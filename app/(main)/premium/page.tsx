@@ -91,7 +91,7 @@ export default function PremiumPage() {
             animate={{ opacity: 1, y: 0 }}
             className="font-serif font-bold text-5xl md:text-7xl mb-4 tracking-tight"
           >
-            IGNITE <span className="text-transparent bg-clip-text bg-gradient-to-r from-crimson to-yellow-500 animate-pulse">PRO 🔥</span>
+            HKMEETUP <span className="text-transparent bg-clip-text bg-gradient-to-r from-crimson to-yellow-500 animate-pulse">PRO 🔥</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -154,7 +154,7 @@ export default function PremiumPage() {
               <Star size={16} fill="currentColor" />
               <Star size={16} fill="currentColor" />
             </div>
-            <span className="text-sm font-medium">Join 2M+ singles on IGNITE</span>
+            <span className="text-sm font-medium">Join 2M+ singles on HKMEETUP</span>
           </div>
         </div>
       </div>

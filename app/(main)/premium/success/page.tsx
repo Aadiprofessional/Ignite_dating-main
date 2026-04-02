@@ -77,7 +77,7 @@ export default function SuccessPage() {
         >
           You're now <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-crimson to-yellow-500 animate-pulse">
-            IGNITE PRO 🔥
+            HKMEETUP PRO 🔥
           </span>
         </motion.h1>
 
@@ -91,7 +91,7 @@ export default function SuccessPage() {
             Subscription Details
           </h3>
           <div className="flex justify-between items-center mb-2">
-            <span className="font-bold text-lg text-white">Ignite Pro</span>
+            <span className="font-bold text-lg text-white">Hkmeetup Pro</span>
             <span className="text-crimson font-bold">$14.99/mo</span>
           </div>
           <p className="text-sm text-zinc-400 flex items-center gap-2">

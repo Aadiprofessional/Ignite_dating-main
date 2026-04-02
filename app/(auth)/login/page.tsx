@@ -92,7 +92,7 @@ function LoginContent() {
             Welcome back
           </p>
           <h1 className="text-3xl font-serif font-bold tracking-tight text-white">
-            Sign in to Ignite
+            Sign in to Hkmeetup
           </h1>
           <p className="text-sm text-white/60">
             Access your matches, chats, and events in one secure place.

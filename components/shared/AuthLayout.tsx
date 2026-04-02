@@ -4,27 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { Check, ShieldCheck, Users } from "lucide-react";
-
-function FlameMark() {
-  return (
-    <svg
-      viewBox="0 0 64 64"
-      className="h-8 w-8 text-crimson animate-flameFicker"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M33.68 4C37.79 14.03 48 17.4 48 30.63C48 41.36 40.08 50 31.5 50C22.93 50 16 42.49 16 33.39C16 25.14 20.95 19.05 26.95 14.15C26.24 19.18 28.4 22.68 31.92 24.89C33.5 19.47 34.31 13.51 33.68 4Z"
-        fill="currentColor"
-      />
-      <path
-        d="M31.89 26.29C36.84 29.08 40 34.29 40 39.88C40 47.05 34.4 52 29.03 52C23.66 52 20 47.52 20 41.72C20 36.83 22.18 33.12 26.1 29.84C26.04 33.5 27.97 36.6 31.89 39.01V26.29Z"
-        fill="#F5F0EB"
-        fillOpacity="0.6"
-      />
-    </svg>
-  );
-}
+import { BrandLogo } from "@/components/ui/flame-logo";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -43,9 +23,9 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
           className="hidden flex-col justify-between border-r border-white/10 px-10 py-12 lg:flex xl:px-16"
         >
           <Link href="/" className="flex w-fit items-center gap-2">
-            <FlameMark />
+            <BrandLogo className="h-8 w-8" />
             <span className="font-display text-3xl font-semibold tracking-[0.14em] text-offwhite">
-              IGNITE
+              HKMEETUP
             </span>
           </Link>
           <div className="mx-auto w-full max-w-[420px]">
@@ -111,7 +91,7 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
               &ldquo;{quote || "Love is not about finding the right person, but creating a right relationship. It's not about how much love you have in the beginning but how much love you build till the end."}&rdquo;
             </p>
             <footer className="text-xs uppercase tracking-[0.14em] text-crimson">
-              {author || "The Ignite Team"}
+              {author || "The Hkmeetup Team"}
             </footer>
           </blockquote>
         </motion.div>
@@ -124,9 +104,9 @@ export function AuthLayout({ children, quote, author }: AuthLayoutProps) {
         >
           <div className="w-full max-w-[480px]">
             <Link href="/" className="mb-8 flex items-center justify-center gap-2 text-white lg:hidden">
-              <FlameMark />
+              <BrandLogo className="h-8 w-8" />
               <span className="font-display text-3xl font-semibold tracking-[0.14em] text-offwhite">
-                IGNITE
+                HKMEETUP
               </span>
             </Link>
             {children}

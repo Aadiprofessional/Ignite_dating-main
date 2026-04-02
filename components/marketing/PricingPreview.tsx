@@ -80,7 +80,7 @@ export default function PricingPreview() {
 
             <Link
               href="/signup"
-              className="ignite-btn mt-7 inline-flex w-full items-center justify-center rounded-full border border-white/20 px-6 py-3 font-body text-sm font-semibold text-offwhite transition hover:border-crimson/55"
+              className="hkmeetup-btn mt-7 inline-flex w-full items-center justify-center rounded-full border border-white/20 px-6 py-3 font-body text-sm font-semibold text-offwhite transition hover:border-crimson/55"
             >
               Get Started Free
             </Link>
@@ -112,7 +112,7 @@ export default function PricingPreview() {
 
             <Link
               href="/premium"
-              className="ignite-btn mt-8 inline-flex w-full items-center justify-center rounded-full bg-crimson px-6 py-3 font-body text-sm font-semibold text-offwhite shadow-[0_0_30px_rgba(232,25,44,0.35)] hover:bg-crimson-dark"
+              className="hkmeetup-btn mt-8 inline-flex w-full items-center justify-center rounded-full bg-crimson px-6 py-3 font-body text-sm font-semibold text-offwhite shadow-[0_0_30px_rgba(232,25,44,0.35)] hover:bg-crimson-dark"
             >
               Try Pro Free for 7 Days
             </Link>

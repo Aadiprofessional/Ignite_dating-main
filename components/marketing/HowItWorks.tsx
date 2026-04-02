@@ -71,7 +71,7 @@ export default function HowItWorks() {
             </div>
             <Link
               href="/signup"
-              className="ignite-btn mt-6 inline-flex w-full items-center justify-center rounded-full bg-crimson px-5 py-3 text-sm font-semibold text-offwhite shadow-[0_0_24px_rgba(232,25,44,0.28)] transition hover:bg-crimson-dark"
+              className="hkmeetup-btn mt-6 inline-flex w-full items-center justify-center rounded-full bg-crimson px-5 py-3 text-sm font-semibold text-offwhite shadow-[0_0_24px_rgba(232,25,44,0.28)] transition hover:bg-crimson-dark"
             >
               Start Free
             </Link>

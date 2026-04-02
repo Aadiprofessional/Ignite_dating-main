@@ -2,8 +2,8 @@
   "baseUrl": "https://server.hkmeetup.space",
   "testedAt": "2026-03-18T16:55:57.849Z",
   "users": {
-    "user1": "ignite_test_1773852469188_1@example.com",
-    "user2": "ignite_test_1773852469188_2@example.com",
+    "user1": "hkmeetup_test_1773852469188_1@example.com",
+    "user2": "hkmeetup_test_1773852469188_2@example.com",
     "user1Id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
     "user2Id": "eae6fd78-83ad-48ba-b025-85886b051dca"
   },
@@ -23,7 +23,7 @@
       },
       "status": 200,
       "response": {
-        "name": "Ignite API",
+        "name": "Hkmeetup API",
         "status": "running"
       }
     },
@@ -46,7 +46,7 @@
         "method": "POST",
         "path": "/api/auth/login",
         "body": {
-          "email": "ignite_test_1773852469188_1@example.com",
+          "email": "hkmeetup_test_1773852469188_1@example.com",
           "password": "[REDACTED]"
         },
         "hasAuth": false
@@ -57,7 +57,7 @@
           "id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
           "aud": "authenticated",
           "role": "authenticated",
-          "email": "ignite_test_1773852469188_1@example.com",
+          "email": "hkmeetup_test_1773852469188_1@example.com",
           "email_confirmed_at": "2026-03-18T16:50:45.211913Z",
           "phone": "",
           "confirmation_sent_at": "2026-03-18T16:47:50.979012Z",
@@ -70,7 +70,7 @@
             ]
           },
           "user_metadata": {
-            "email": "ignite_test_1773852469188_1@example.com",
+            "email": "hkmeetup_test_1773852469188_1@example.com",
             "email_verified": false,
             "phone_verified": false,
             "sub": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a"
@@ -81,7 +81,7 @@
               "id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
               "user_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
               "identity_data": {
-                "email": "ignite_test_1773852469188_1@example.com",
+                "email": "hkmeetup_test_1773852469188_1@example.com",
                 "email_verified": false,
                 "phone_verified": false,
                 "sub": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a"
@@ -90,7 +90,7 @@
               "last_sign_in_at": "2026-03-18T16:47:50.970833Z",
               "created_at": "2026-03-18T16:47:50.971157Z",
               "updated_at": "2026-03-18T16:47:50.971157Z",
-              "email": "ignite_test_1773852469188_1@example.com"
+              "email": "hkmeetup_test_1773852469188_1@example.com"
             }
           ],
           "created_at": "2026-03-18T16:47:50.951374Z",
@@ -107,7 +107,7 @@
             "id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
             "aud": "authenticated",
             "role": "authenticated",
-            "email": "ignite_test_1773852469188_1@example.com",
+            "email": "hkmeetup_test_1773852469188_1@example.com",
             "email_confirmed_at": "2026-03-18T16:50:45.211913Z",
             "phone": "",
             "confirmation_sent_at": "2026-03-18T16:47:50.979012Z",
@@ -120,7 +120,7 @@
               ]
             },
             "user_metadata": {
-              "email": "ignite_test_1773852469188_1@example.com",
+              "email": "hkmeetup_test_1773852469188_1@example.com",
               "email_verified": false,
               "phone_verified": false,
               "sub": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a"
@@ -131,7 +131,7 @@
                 "id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
                 "user_id": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a",
                 "identity_data": {
-                  "email": "ignite_test_1773852469188_1@example.com",
+                  "email": "hkmeetup_test_1773852469188_1@example.com",
                   "email_verified": false,
                   "phone_verified": false,
                   "sub": "36dd385d-8dfb-4ed7-b228-1b43d3ae869a"
@@ -140,7 +140,7 @@
                 "last_sign_in_at": "2026-03-18T16:47:50.970833Z",
                 "created_at": "2026-03-18T16:47:50.971157Z",
                 "updated_at": "2026-03-18T16:47:50.971157Z",
-                "email": "ignite_test_1773852469188_1@example.com"
+                "email": "hkmeetup_test_1773852469188_1@example.com"
               }
             ],
             "created_at": "2026-03-18T16:47:50.951374Z",
@@ -156,7 +156,7 @@
         "method": "POST",
         "path": "/api/auth/login",
         "body": {
-          "email": "ignite_test_1773852469188_2@example.com",
+          "email": "hkmeetup_test_1773852469188_2@example.com",
           "password": "[REDACTED]"
         },
         "hasAuth": false
@@ -167,7 +167,7 @@
           "id": "eae6fd78-83ad-48ba-b025-85886b051dca",
           "aud": "authenticated",
           "role": "authenticated",
-          "email": "ignite_test_1773852469188_2@example.com",
+          "email": "hkmeetup_test_1773852469188_2@example.com",
           "email_confirmed_at": "2026-03-18T16:50:45.211913Z",
           "phone": "",
           "confirmation_sent_at": "2026-03-18T16:47:51.361059Z",
@@ -180,7 +180,7 @@
             ]
           },
           "user_metadata": {
-            "email": "ignite_test_1773852469188_2@example.com",
+            "email": "hkmeetup_test_1773852469188_2@example.com",
             "email_verified": false,
             "phone_verified": false,
             "sub": "eae6fd78-83ad-48ba-b025-85886b051dca"
@@ -191,7 +191,7 @@
               "id": "eae6fd78-83ad-48ba-b025-85886b051dca",
               "user_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
               "identity_data": {
-                "email": "ignite_test_1773852469188_2@example.com",
+                "email": "hkmeetup_test_1773852469188_2@example.com",
                 "email_verified": false,
                 "phone_verified": false,
                 "sub": "eae6fd78-83ad-48ba-b025-85886b051dca"
@@ -200,7 +200,7 @@
               "last_sign_in_at": "2026-03-18T16:47:51.358513Z",
               "created_at": "2026-03-18T16:47:51.35855Z",
               "updated_at": "2026-03-18T16:47:51.35855Z",
-              "email": "ignite_test_1773852469188_2@example.com"
+              "email": "hkmeetup_test_1773852469188_2@example.com"
             }
           ],
           "created_at": "2026-03-18T16:47:51.35492Z",
@@ -217,7 +217,7 @@
             "id": "eae6fd78-83ad-48ba-b025-85886b051dca",
             "aud": "authenticated",
             "role": "authenticated",
-            "email": "ignite_test_1773852469188_2@example.com",
+            "email": "hkmeetup_test_1773852469188_2@example.com",
             "email_confirmed_at": "2026-03-18T16:50:45.211913Z",
             "phone": "",
             "confirmation_sent_at": "2026-03-18T16:47:51.361059Z",
@@ -230,7 +230,7 @@
               ]
             },
             "user_metadata": {
-              "email": "ignite_test_1773852469188_2@example.com",
+              "email": "hkmeetup_test_1773852469188_2@example.com",
               "email_verified": false,
               "phone_verified": false,
               "sub": "eae6fd78-83ad-48ba-b025-85886b051dca"
@@ -241,7 +241,7 @@
                 "id": "eae6fd78-83ad-48ba-b025-85886b051dca",
                 "user_id": "eae6fd78-83ad-48ba-b025-85886b051dca",
                 "identity_data": {
-                  "email": "ignite_test_1773852469188_2@example.com",
+                  "email": "hkmeetup_test_1773852469188_2@example.com",
                   "email_verified": false,
                   "phone_verified": false,
                   "sub": "eae6fd78-83ad-48ba-b025-85886b051dca"
@@ -250,7 +250,7 @@
                 "last_sign_in_at": "2026-03-18T16:47:51.358513Z",
                 "created_at": "2026-03-18T16:47:51.35855Z",
                 "updated_at": "2026-03-18T16:47:51.35855Z",
-                "email": "ignite_test_1773852469188_2@example.com"
+                "email": "hkmeetup_test_1773852469188_2@example.com"
               }
             ],
             "created_at": "2026-03-18T16:47:51.35492Z",

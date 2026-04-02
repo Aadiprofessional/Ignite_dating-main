@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+<defs>
+<linearGradient id="hkmeetupLogoGradientStatic" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FF3E6C" />
+<stop offset="0.5" stop-color="#E8192C" />
+<stop offset="1" stop-color="#A90F2D" />
+</linearGradient>
+</defs>
+<path d="M4 20C4 11.1634 11.1634 4 20 4H44C52.8366 4 60 11.1634 60 20V44C60 52.8366 52.8366 60 44 60H20C11.1634 60 4 52.8366 4 44V20Z" fill="url(#hkmeetupLogoGradientStatic)" />
+<path d="M4 20C4 11.1634 11.1634 4 20 4H44C52.8366 4 60 11.1634 60 20V44C60 52.8366 52.8366 60 44 60H20C11.1634 60 4 52.8366 4 44V20Z" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.2" />
+<path d="M18 18V46M28 18V46M18 32H28M38 18V46M38 32L49 18M38 32L49 46" stroke="#F8FAFC" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+<circle cx="50" cy="14" r="3" fill="#FFD0D8" />
+</svg>

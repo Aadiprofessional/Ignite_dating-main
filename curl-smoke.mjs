@@ -5,8 +5,8 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 const BASE = "https://server.hkmeetup.space";
-const user1 = { email: "ignite_test_1773852469188_1@example.com", password: "StrongPass123!" };
-const user2 = { email: "ignite_test_1773852469188_2@example.com", password: "StrongPass123!" };
+const user1 = { email: "hkmeetup_test_1773852469188_1@example.com", password: "StrongPass123!" };
+const user2 = { email: "hkmeetup_test_1773852469188_2@example.com", password: "StrongPass123!" };
 
 const calls = [];
 

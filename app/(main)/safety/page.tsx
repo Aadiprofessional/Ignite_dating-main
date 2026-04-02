@@ -41,7 +41,7 @@ export default function SafetyPage() {
             <Shield className="w-8 h-8 text-blue-500" />
           </div>
           <h2 className="font-serif font-bold text-2xl mb-2">Your Safety First</h2>
-          <p className="text-sm text-white/60">We're committed to keeping Ignite a safe and inclusive community for everyone.</p>
+          <p className="text-sm text-white/60">We're committed to keeping Hkmeetup a safe and inclusive community for everyone.</p>
         </div>
 
         {/* Tools Section */}

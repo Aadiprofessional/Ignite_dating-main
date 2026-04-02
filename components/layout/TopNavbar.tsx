@@ -3,6 +3,7 @@
 import { Bell, Flame, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
+import { BrandLogo } from "@/components/ui/flame-logo";
 
 export function TopNavbar() {
   const { notifications } = useStore();
@@ -12,8 +13,8 @@ export function TopNavbar() {
     <header className="sticky top-0 z-40 h-16 border-b border-zinc-900/50 bg-[#080808]/90 px-4 backdrop-blur-md lg:rounded-t-3xl lg:px-8">
       <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between">
         <div className="flex items-center gap-2 text-crimson">
-          <Flame className="h-6 w-6 fill-crimson" />
-          <span className="font-serif text-2xl font-bold tracking-wide text-white">IGNITE</span>
+          <BrandLogo className="h-7 w-7" />
+          <span className="font-serif text-2xl font-bold tracking-wide text-white">HKMEETUP</span>
         </div>
 
         <div className="flex items-center gap-4">

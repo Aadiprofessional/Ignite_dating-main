@@ -13,6 +13,7 @@ import StepFinalPreview from '@/components/onboarding/StepFinalPreview';
 import { Flame, Loader2 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
+import { BrandLogo } from '@/components/ui/flame-logo';
 
 function SetupWizard() {
   const { currentStep, totalSteps, data, updateData } = useOnboarding();
@@ -57,8 +58,8 @@ function SetupWizard() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#080808]/80 backdrop-blur-md border-b border-zinc-900">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 text-crimson">
-            <Flame size={24} fill="currentColor" />
-            <span className="font-serif font-bold text-xl tracking-wide text-white">IGNITE</span>
+            <BrandLogo className="h-7 w-7" />
+            <span className="font-serif font-bold text-xl tracking-wide text-white">HKMEETUP</span>
           </div>
           <div className="font-mono text-sm text-zinc-500">
             {currentStep <= totalSteps ? `Step ${currentStep} of ${totalSteps}` : 'Preview'}

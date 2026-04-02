@@ -25,9 +25,9 @@ const features = [
     id: "",
   },
   {
-    tag: "IGNITE PRO",
+    tag: "HKMEETUP PRO",
     title: "See who's already obsessed with you.",
-    body: "Unlock advanced visibility, priority boosts, and premium filters with IGNITE Pro.",
+    body: "Unlock advanced visibility, priority boosts, and premium filters with HKMEETUP Pro.",
     id: "",
   },
 ];
@@ -178,7 +178,7 @@ function ProVisual() {
         <div className="flex items-center justify-between">
           <span className="inline-flex items-center gap-2 rounded-full bg-crimson/15 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-crimson">
             <Crown className="h-3.5 w-3.5" />
-            Ignite Pro
+            Hkmeetup Pro
           </span>
           <Sparkles className="h-4 w-4 text-crimson" />
         </div>
@@ -241,7 +241,7 @@ export default function FeaturesShowcase() {
                 </p>
                 <a
                   href="#"
-                  className="ignite-btn mt-6 inline-flex font-body text-sm text-offwhite transition hover:text-crimson"
+                  className="hkmeetup-btn mt-6 inline-flex font-body text-sm text-offwhite transition hover:text-crimson"
                 >
                   Learn more →
                 </a>

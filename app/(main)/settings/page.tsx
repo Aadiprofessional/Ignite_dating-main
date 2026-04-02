@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight, Bell, Lock, Globe, Smartphone, LogOut, Trash2, Moon, Volume2, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { useStore } from "@/lib/store";
+import { BrandLogo } from "@/components/ui/flame-logo";
 
 function SettingSection({ title, children }: { title: string, children: React.ReactNode }) {
   return (
@@ -127,7 +128,7 @@ export default function SettingsPage() {
             />
           </div>
           <SettingItem 
-            label="Show me on Ignite" 
+            label="Show me on Hkmeetup" 
             type="toggle" 
             checked={showMe} 
             onClick={() => setShowMe(!showMe)} 
@@ -183,10 +184,8 @@ export default function SettingsPage() {
         </div>
 
         <div className="text-center pb-8">
-          <div className="w-8 h-8 mx-auto mb-2 bg-gradient-to-br from-crimson to-orange-600 rounded-lg flex items-center justify-center">
-            <span className="font-serif font-bold text-white italic">i</span>
-          </div>
-          <p className="text-xs text-white/30">Ignite Version 1.0.0 (Build 2024.05.20)</p>
+          <BrandLogo className="mx-auto mb-2 h-8 w-8" />
+          <p className="text-xs text-white/30">Hkmeetup Version 1.0.0 (Build 2024.05.20)</p>
         </div>
         </div>
       </div>

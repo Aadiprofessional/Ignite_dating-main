@@ -459,7 +459,7 @@ const buildName = (profile: Record<string, unknown>) => {
   const firstName = pickString(profile.first_name);
   const lastName = pickString(profile.last_name);
   const joinedName = `${firstName} ${lastName}`.trim();
-  return joinedName || pickString(profile.username) || pickString(profile.name) || 'Ignite User';
+  return joinedName || pickString(profile.username) || pickString(profile.name) || 'Hkmeetup User';
 };
 
 const calcAge = (birthdate: string) => {
@@ -496,7 +496,7 @@ export const mapApiUserToProfile = (
     name: buildName(profilePayload),
     age: calcAge(birthdate),
     bio: pickString(profilePayload.bio),
-    photos: images.length ? images : ['https://picsum.photos/seed/ignite-profile/400/600'],
+    photos: images.length ? images : ['https://picsum.photos/seed/hkmeetup-profile/400/600'],
     job: pickString(profilePayload.occupation),
     company: '',
     education: pickString(profilePayload.education),
@@ -540,7 +540,7 @@ export const mapApiDiscoverProfile = (item: Record<string, unknown>): Profile =>
     pickString(profile.full_name) ||
     `${firstName} ${lastName}`.trim() ||
     pickString(profile.username) ||
-    pickString(profile.name, 'Ignite User');
+    pickString(profile.name, 'Hkmeetup User');
   const verification = (item.verification as Record<string, unknown> | undefined) || {};
 
   return {
@@ -553,7 +553,7 @@ export const mapApiDiscoverProfile = (item: Record<string, unknown>): Profile =>
         : calcAge(pickString(profile.birth_date) || pickString(profile.birthdate)),
     distance: Math.round(pickNumber(profile.distance_km, 0)),
     bio: pickString(profile.bio),
-    photos: images.length ? images : ['https://picsum.photos/seed/ignite-discover/400/600'],
+    photos: images.length ? images : ['https://picsum.photos/seed/hkmeetup-discover/400/600'],
     interests: (() => {
       const interests = pickArray<string>(profile.interests).filter(Boolean);
       if (interests.length) return interests;
@@ -608,10 +608,10 @@ export const mapApiMatch = (item: Record<string, unknown>): Match => {
   return {
     id: matchId || otherUserId || createClientId(),
     name: `${firstName} ${lastName}`.trim() || pickString(profile.full_name) || pickString(profile.username) || pickString(profile.name, 'New Match'),
-    avatar: images[0] || 'https://picsum.photos/seed/ignite-match/100/100',
+    avatar: images[0] || 'https://picsum.photos/seed/hkmeetup-match/100/100',
     isNew: true,
     online: false,
-    lastMessage: 'You matched on Ignite',
+    lastMessage: 'You matched on Hkmeetup',
     timestamp,
     unreadCount: 0,
     isVerified: false,
@@ -625,14 +625,14 @@ export const mapApiMatch = (item: Record<string, unknown>): Match => {
 };
 
 export const mapApiChatListItem = (item: ChatListItem): Match => {
-  const name = pickString(item.other_full_name) || pickString(item.other_username, 'Ignite User');
+  const name = pickString(item.other_full_name) || pickString(item.other_username, 'Hkmeetup User');
   const lastMessage =
     pickString(item.last_message_content) ||
     pickString(item.last_message_media_url) ||
     (pickString(item.last_message_type) ? `${pickString(item.last_message_type)} message` : 'Start conversation');
   const createdAt = pickString(item.last_message_created_at);
   const photoUrls = pickArray<string>(item.other_photo_urls).filter(Boolean);
-  const avatar = photoUrls[0] || 'https://picsum.photos/seed/ignite-chat/100/100';
+  const avatar = photoUrls[0] || 'https://picsum.photos/seed/hkmeetup-chat/100/100';
 
   return {
     id: pickString(item.match_id, createClientId()),
@@ -883,7 +883,7 @@ export const api = {
       min_age: number;
       max_age: number;
       max_distance_km: number;
-      show_me_on_ignite: boolean;
+      show_me_on_hkmeetup: boolean;
       university_id: string;
     }
   ) =>

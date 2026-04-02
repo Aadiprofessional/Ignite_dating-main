@@ -436,7 +436,7 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
                       clickEvent.stopPropagation();
                       router.push("/login");
                     }}
-                    className="ignite-btn inline-flex w-full items-center justify-center rounded-full border border-crimson/50 bg-crimson/90 px-4 py-2.5 text-sm font-semibold text-offwhite transition hover:bg-crimson"
+                    className="hkmeetup-btn inline-flex w-full items-center justify-center rounded-full border border-crimson/50 bg-crimson/90 px-4 py-2.5 text-sm font-semibold text-offwhite transition hover:bg-crimson"
                   >
                     Join Event
                   </button>

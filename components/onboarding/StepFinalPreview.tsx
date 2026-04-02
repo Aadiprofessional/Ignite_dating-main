@@ -136,7 +136,7 @@ export default function StepFinalPreview() {
         min_age: data.ageRange[0],
         max_age: data.ageRange[1],
         max_distance_km: data.distance,
-        show_me_on_ignite: data.showOnIgnite,
+        show_me_on_hkmeetup: data.showOnHkmeetup,
         university_id: resolvedUniversityId,
         custom_university_name: resolvedUniversityId ? '' : selectedUniversityName,
         document_url: data.verificationDocumentUrl,
@@ -164,7 +164,7 @@ export default function StepFinalPreview() {
     }
   };
 
-  const mainPhoto = data.photos[0]?.url || 'https://picsum.photos/seed/ignite-onboarding/400/600';
+  const mainPhoto = data.photos[0]?.url || 'https://picsum.photos/seed/hkmeetup-onboarding/400/600';
 
   return (
     <div className="flex flex-col h-full items-center justify-center max-w-sm mx-auto w-full py-4">

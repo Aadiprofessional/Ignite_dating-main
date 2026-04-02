@@ -118,7 +118,7 @@ function CheckoutForm({ plan, billing, amount }: { plan: string; billing: string
       </button>
 
       <p className="text-[10px] text-zinc-500 text-center leading-relaxed max-w-sm mx-auto">
-        By confirming your subscription, you allow Ignite to charge your card for this payment and future payments in accordance with our terms. You can cancel your subscription at any time.
+        By confirming your subscription, you allow Hkmeetup to charge your card for this payment and future payments in accordance with our terms. You can cancel your subscription at any time.
       </p>
 
       <div className="flex justify-center gap-6 pt-6 border-t border-zinc-900/50">
@@ -209,7 +209,7 @@ function CheckoutContent() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-crimson/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             
             <div className="relative z-10">
-                <h2 className="font-bold text-2xl mb-1 text-white">Ignite {plan}</h2>
+                <h2 className="font-bold text-2xl mb-1 text-white">Hkmeetup {plan}</h2>
                 <p className="text-zinc-400 text-sm font-mono capitalize mb-3">{billing} billing</p>
                 <div className="inline-flex items-center gap-1.5 bg-white/10 border border-white/10 text-white text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider">
                     <Star size={10} className="fill-current text-yellow-500" />

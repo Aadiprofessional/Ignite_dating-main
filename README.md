@@ -1,4 +1,4 @@
-# IGNITE - Dating Website
+# HKMEETUP - Dating Website
 
 A modern, high-performance dating application built with Next.js 14, TypeScript, Tailwind CSS, and Framer Motion.
 
@@ -10,7 +10,7 @@ A modern, high-performance dating application built with Next.js 14, TypeScript,
 - **Chat System**: Real-time messaging interface with photo sharing, GIFs (mock), and mini-profile drawer.
 
 ### Premium Features
-- **Ignite Pro**: Subscription tier with exclusive benefits.
+- **Hkmeetup Pro**: Subscription tier with exclusive benefits.
 - **Super Likes & Boosts**: Stand out from the crowd with premium actions.
 - **See Who Likes You**: View profiles of users who have already liked you (Pro feature).
 - **Stripe Integration**: Complete payment flow with Stripe Elements (Test Mode).

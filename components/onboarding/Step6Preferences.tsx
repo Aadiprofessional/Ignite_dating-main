@@ -108,15 +108,15 @@ export default function Step6Preferences() {
           />
         </div>
 
-        {/* Show me on Ignite */}
+        {/* Show me on Hkmeetup */}
         <div className="flex items-center justify-between pt-4 border-t border-zinc-900">
           <div className="space-y-1">
-            <Label className="text-white font-medium block">Show me on Ignite</Label>
+            <Label className="text-white font-medium block">Show me on Hkmeetup</Label>
             <p className="text-xs text-zinc-500">Turn off to hide your profile card stack.</p>
           </div>
           <Switch
-            checked={data.showOnIgnite}
-            onCheckedChange={(checked) => updateData({ showOnIgnite: checked })}
+            checked={data.showOnHkmeetup}
+            onCheckedChange={(checked) => updateData({ showOnHkmeetup: checked })}
           />
         </div>
       </div>

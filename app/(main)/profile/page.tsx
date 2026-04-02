@@ -129,7 +129,7 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Ignite Pro Banner */}
+        {/* Hkmeetup Pro Banner */}
         {!isPro && (
           <Link href="/wallet/buy">
             <motion.div 
@@ -143,7 +143,7 @@ export default function ProfilePage() {
                     <Crown className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-bold">Get Ignite Pro</h3>
+                    <h3 className="font-bold">Get Hkmeetup Pro</h3>
                     <p className="text-xs text-white/50">See who likes you & more</p>
                   </div>
                 </div>
@@ -179,7 +179,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="mt-12 text-center">
-          <p className="text-xs text-white/20 font-mono uppercase tracking-widest">Ignite v1.0.0</p>
+          <p className="text-xs text-white/20 font-mono uppercase tracking-widest">Hkmeetup v1.0.0</p>
         </div>
       </div>
     </div>

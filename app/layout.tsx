@@ -22,13 +22,18 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "IGNITE - Find Your Spark",
+  title: "HKMEETUP - Find Your Spark",
   description: "A dating website",
-  applicationName: "IGNITE",
+  applicationName: "HKMEETUP",
+  icons: {
+    icon: "/hkmeetup-logo.svg",
+    shortcut: "/hkmeetup-logo.svg",
+    apple: "/hkmeetup-logo.svg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "IGNITE",
+    title: "HKMEETUP",
   },
   formatDetection: {
     telephone: false,

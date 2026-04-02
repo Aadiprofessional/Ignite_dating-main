@@ -196,7 +196,7 @@ export default function SwipeDemo() {
           Test the swiping experience before creating your account
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-center text-sm leading-relaxed text-offwhite/60 md:text-base">
-          Explore how matching feels on IGNITE with a live preview flow designed for faster, clearer actions.
+          Explore how matching feels on HKMEETUP with a live preview flow designed for faster, clearer actions.
         </p>
 
         <div className="mt-14 rounded-[34px] border border-white/10 bg-white/[0.02] p-4 sm:p-6 lg:p-8">
@@ -228,7 +228,7 @@ export default function SwipeDemo() {
               </div>
               <Link
                 href="/signup"
-                className="ignite-btn mt-6 inline-flex w-full items-center justify-center rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-offwhite transition hover:border-crimson/60 hover:text-offwhite"
+                className="hkmeetup-btn mt-6 inline-flex w-full items-center justify-center rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-offwhite transition hover:border-crimson/60 hover:text-offwhite"
               >
                 Continue to Sign Up
               </Link>
@@ -250,7 +250,7 @@ export default function SwipeDemo() {
                         </h3>
                         <Link
                           href="/signup"
-                          className="ignite-btn mt-7 inline-flex w-full items-center justify-center rounded-full bg-crimson px-6 py-3 font-body font-semibold text-offwhite"
+                          className="hkmeetup-btn mt-7 inline-flex w-full items-center justify-center rounded-full bg-crimson px-6 py-3 font-body font-semibold text-offwhite"
                         >
                           Create Free Account
                         </Link>
@@ -302,7 +302,7 @@ export default function SwipeDemo() {
                       id: Date.now(),
                     })
                   }
-                  className="ignite-btn inline-flex h-20 w-20 items-center justify-center rounded-full border border-white/30 bg-transparent text-offwhite"
+                  className="hkmeetup-btn inline-flex h-20 w-20 items-center justify-center rounded-full border border-white/30 bg-transparent text-offwhite"
                   aria-label="Pass"
                 >
                   <X className="h-8 w-8" />
@@ -320,7 +320,7 @@ export default function SwipeDemo() {
                       id: Date.now(),
                     })
                   }
-                  className="ignite-btn animate-pulseGlow inline-flex h-20 w-20 items-center justify-center rounded-full bg-crimson text-offwhite shadow-[0_0_35px_rgba(232,25,44,0.35)]"
+                  className="hkmeetup-btn animate-pulseGlow inline-flex h-20 w-20 items-center justify-center rounded-full bg-crimson text-offwhite shadow-[0_0_35px_rgba(232,25,44,0.35)]"
                   aria-label="Like"
                 >
                   <Heart className="h-8 w-8" />

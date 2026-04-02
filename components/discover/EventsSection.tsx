@@ -774,7 +774,7 @@ export function EventsSection() {
             </p>
             <h1 className="font-display text-4xl font-semibold leading-tight text-offwhite sm:text-5xl lg:text-6xl">What&apos;s happening near you</h1>
             <p className="mt-3 max-w-xl text-sm text-zinc-300 sm:text-base">
-              Find live moments, request access in one tap, and jump into your community events without leaving Ignite.
+              Find live moments, request access in one tap, and jump into your community events without leaving Hkmeetup.
             </p>
           </div>
 
@@ -1406,7 +1406,7 @@ export function EventsSection() {
               <p className="inline-flex w-fit items-center rounded-full border border-crimson/40 bg-crimson/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-crimson">
                 Event Builder
               </p>
-              <h3 className="mt-4 text-2xl font-semibold text-white">Create your next Ignite experience</h3>
+              <h3 className="mt-4 text-2xl font-semibold text-white">Create your next Hkmeetup experience</h3>
               <p className="mt-2 text-sm text-zinc-300">Complete each step to publish a polished listing optimized for discovery and quick joins.</p>
               <div className="mt-8 space-y-3">
                 <div className={`rounded-2xl border px-4 py-3 transition-colors ${createStep === 1 ? "border-crimson/45 bg-crimson/15" : "border-white/10 bg-white/[0.03]"}`}>

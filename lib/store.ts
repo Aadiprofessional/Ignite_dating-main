@@ -116,7 +116,7 @@ interface AppState {
     min_age: number;
     max_age: number;
     max_distance_km: number;
-    show_me_on_ignite: boolean;
+    show_me_on_hkmeetup: boolean;
     university_id?: string;
     custom_university_name?: string;
     document_url: string;
@@ -263,7 +263,7 @@ const mapIncomingLike = (item: IncomingLike): IncomingLikeProfile => ({
   action: item.action,
   userId: item.user_id,
   username: item.username || '',
-  name: item.full_name || item.username || 'Ignite User',
+  name: item.full_name || item.username || 'Hkmeetup User',
   bio: item.bio || '',
   photos: Array.isArray(item.photo_urls) && item.photo_urls.length ? item.photo_urls : ['https://picsum.photos/seed/incoming-like/400/600'],
   city: item.city || '',
@@ -721,7 +721,7 @@ export const useStore = create<AppState>()(
             min_age: payload.min_age,
             max_age: payload.max_age,
             max_distance_km: payload.max_distance_km,
-            show_me_on_ignite: payload.show_me_on_ignite,
+            show_me_on_hkmeetup: payload.show_me_on_hkmeetup,
             university_id: payload.university_id,
           });
         }
@@ -753,7 +753,7 @@ export const useStore = create<AppState>()(
       },
     }),
     {
-      name: 'ignite-storage',
+      name: 'hkmeetup-storage',
       partialize: (state) => ({ 
         currentUser: state.currentUser,
         session: state.session,
