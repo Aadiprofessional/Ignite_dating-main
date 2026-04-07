@@ -25,7 +25,6 @@ export function BottomNav() {
     { href: "/profile", icon: User, label: "Profile" },
   ];
 
-  // Helper to check active state (including sub-routes)
   const isActive = (path: string) => {
     if (path === "/home" && pathname === "/home") return true;
     if (path !== "/home" && pathname.startsWith(path)) return true;
@@ -33,40 +32,44 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#080808]/90 backdrop-blur-lg border-t border-zinc-900 pb-safe pt-2 px-2 lg:hidden">
-      <div className="mx-auto flex h-16 max-w-xl items-center justify-around">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-safe pb-3 lg:hidden">
+      <div className="mx-auto max-w-xl rounded-3xl border border-white/10 bg-[#0A0A0A]/85 px-1.5 py-1.5 shadow-[0_20px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
+        <div className="grid h-14 grid-cols-7 items-center">
         {navItems.map((item) => {
           const active = isActive(item.href);
           const Icon = item.icon;
 
           return (
-            <Link key={item.href} href={item.href} className="relative flex flex-col items-center justify-center w-full h-full">
+            <Link key={item.href} href={item.href} className="relative flex h-full items-center justify-center">
               <motion.div
-                whileTap={{ scale: 0.9 }}
+                whileTap={{ scale: 0.95 }}
                 className={cn(
-                  "relative p-2 rounded-xl transition-colors duration-300",
-                  active ? "text-crimson" : "text-zinc-500 hover:text-zinc-300"
+                  "relative flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-300",
+                  active
+                    ? "bg-crimson/15 text-crimson shadow-[inset_0_0_0_1px_rgba(232,25,44,0.3)]"
+                    : "text-zinc-500 hover:text-zinc-300"
                 )}
               >
-                <Icon size={26} strokeWidth={active ? 2.5 : 2} fill={active && item.label === "Home" ? "currentColor" : "none"} />
-                
+                <Icon size={21} strokeWidth={active ? 2.4 : 2} fill={active && item.label === "Home" ? "currentColor" : "none"} />
+
                 {item.badge && item.badge > 0 && (
-                  <div className="absolute top-1 right-1 min-w-[16px] h-4 bg-crimson text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-[#080808]">
-                    {item.badge}
-                  </div>
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-md bg-zinc-800/95 px-1 text-[9px] font-semibold leading-3 text-zinc-200">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
                 )}
               </motion.div>
-              
+
               {active && (
                 <motion.div
                   layoutId="nav-indicator"
-                  className="absolute -bottom-1 w-1 h-1 bg-crimson rounded-full"
+                  className="absolute -top-[3px] h-1.5 w-8 rounded-full bg-crimson"
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
               )}
             </Link>
           );
         })}
+        </div>
       </div>
     </nav>
   );
