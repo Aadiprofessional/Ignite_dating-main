@@ -586,10 +586,6 @@ export function EventsSection() {
       setCreateError("Please fill all required fields.");
       return;
     }
-    if (!createImageFile) {
-      setCreateError("Please upload an event image.");
-      return;
-    }
     if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
       setCreateError("Please enter valid start/end date and time.");
       return;
@@ -605,9 +601,18 @@ export function EventsSection() {
 
     setIsCreatingEvent(true);
     try {
-      setIsUploadingImage(true);
-      const uploadedImageUrl = await api.uploadProfilePhoto(createImageFile, currentUser?.id || createClientId());
-      setIsUploadingImage(false);
+      let uploadedImageUrl: string | undefined;
+      let imageUploadIssue: string | null = null;
+      if (createImageFile) {
+        setIsUploadingImage(true);
+        try {
+          uploadedImageUrl = await api.uploadProfilePhoto(createImageFile, currentUser?.id || createClientId());
+        } catch (error) {
+          imageUploadIssue = error instanceof Error ? error.message : "Failed to upload event cover image.";
+        } finally {
+          setIsUploadingImage(false);
+        }
+      }
       await api.createEvent(token, {
         title: createForm.title.trim(),
         description: createForm.description.trim(),
@@ -622,7 +627,11 @@ export function EventsSection() {
         ends_at: endsAt.toISOString(),
         capacity,
       });
-      setCreateSuccess("Event submitted successfully. It is pending admin approval.");
+      if (imageUploadIssue) {
+        setCreateSuccess(`Event submitted successfully. It is pending admin approval. Cover image upload skipped: ${imageUploadIssue}`);
+      } else {
+        setCreateSuccess("Event submitted successfully. It is pending admin approval.");
+      }
       setCreateStep(1);
       setCreateCategory(categoryOptions[0]);
       setCreateForm(getDefaultCreateFormState());
