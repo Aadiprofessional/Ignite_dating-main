@@ -629,10 +629,16 @@ export default function PublicEventsSection({ fullPage = false }: PublicEventsSe
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="h-[86vh] max-h-[86vh] w-[min(96vw,1200px)] overflow-hidden border-white/15 bg-[#0C0C0C] p-0 text-white sm:max-w-[1200px] [&>button]:z-50 [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/20 [&>button]:bg-black/70 [&>button]:p-1.5 [&>button]:text-white">
           {!selectedEvent ? (
-            <div className="flex h-full items-center justify-center gap-2 text-sm text-zinc-400">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading details...
-            </div>
+            <>
+              <DialogHeader className="sr-only">
+                <DialogTitle>Event details</DialogTitle>
+                <DialogDescription>Loading public event details and map information.</DialogDescription>
+              </DialogHeader>
+              <div className="flex h-full items-center justify-center gap-2 text-sm text-zinc-400">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading details...
+              </div>
+            </>
           ) : (
             <div className="grid h-full grid-cols-1 text-sm text-zinc-300 lg:grid-cols-[1.08fr_1fr]">
               <div className="h-full overflow-y-auto p-5 lg:p-6">

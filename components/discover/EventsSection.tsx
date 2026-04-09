@@ -1401,6 +1401,10 @@ export function EventsSection() {
           className="fixed inset-0 z-50 h-screen w-full translate-x-0 translate-y-0 gap-0 overflow-hidden border-white/15 bg-[#0C0C0C] p-0 text-white data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-right-full sm:left-auto sm:right-0 sm:max-w-[560px] sm:rounded-none lg:inset-y-auto lg:left-1/2 lg:right-auto lg:top-1/2 lg:h-[86vh] lg:max-h-[900px] lg:w-[min(1140px,94vw)] lg:max-w-none lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-3xl lg:data-[state=closed]:zoom-out-95 lg:data-[state=open]:zoom-in-95"
           aria-label="Create event drawer"
         >
+          <DialogHeader className="sr-only">
+            <DialogTitle>Create Event</DialogTitle>
+            <DialogDescription>Use the three-step flow to create and publish a new event.</DialogDescription>
+          </DialogHeader>
           <div className="flex h-full flex-col lg:flex-row">
             <aside className="hidden w-[380px] border-r border-white/10 bg-[radial-gradient(circle_at_20%_20%,rgba(232,25,44,0.28),transparent_45%),linear-gradient(180deg,#121212_0%,#0B0B0B_100%)] p-8 lg:flex lg:flex-col">
               <p className="inline-flex w-fit items-center rounded-full border border-crimson/40 bg-crimson/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-crimson">
@@ -1851,10 +1855,16 @@ export function EventsSection() {
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="h-[86vh] max-h-[86vh] w-[min(96vw,1200px)] overflow-hidden border-white/15 bg-[#0C0C0C] p-0 text-white sm:max-w-[1200px] [&>button]:z-50 [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/20 [&>button]:bg-black/70 [&>button]:p-1.5 [&>button]:text-white">
           {detailsLoading ? (
-            <div className="flex h-full items-center justify-center gap-2 text-sm text-zinc-400">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading details...
-            </div>
+            <>
+              <DialogHeader className="sr-only">
+                <DialogTitle>{detailsEvent?.title || "Event details"}</DialogTitle>
+                <DialogDescription>Loading event details and map information.</DialogDescription>
+              </DialogHeader>
+              <div className="flex h-full items-center justify-center gap-2 text-sm text-zinc-400">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading details...
+              </div>
+            </>
           ) : (
             <div className="grid h-full grid-cols-1 text-sm text-zinc-300 lg:grid-cols-[1.08fr_1fr]">
               <div className="h-full overflow-y-auto p-5 lg:p-6">
