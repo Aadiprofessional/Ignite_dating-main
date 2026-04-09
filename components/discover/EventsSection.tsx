@@ -967,7 +967,7 @@ export function EventsSection() {
                       </span>
                       <span className="line-clamp-1 inline-flex items-center gap-1 text-zinc-400">
                         <MapPin className="h-3.5 w-3.5" />
-                        {[event.location_name, event.city].filter(Boolean).join(", ") || "Location TBD"}
+                        {event.city || event.location_name || "Location TBD"}
                       </span>
                     </div>
 
@@ -1101,7 +1101,7 @@ export function EventsSection() {
                       </span>
                     </div>
                     <p className="line-clamp-1 text-xs text-zinc-400">
-                      {[item.event.location_name, item.event.city, item.event.country].filter(Boolean).join(", ") || "Location TBD"}
+                      {item.event.city || item.event.location_name || item.event.country || "Location TBD"}
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 p-4 pt-0">
